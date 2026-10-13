@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>הכפתור לשירונט</title>
+<link rel="icon" href="img/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  ol { padding-inline-start: 22px; line-height: 1.7; margin: 0; }
+  .bm { display: inline-block; background: var(--navy); color: #fff; padding: 12px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 18px; cursor: grab; }
+  code { direction: ltr; display: block; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 12px; word-break: break-all; max-height: 90px; overflow: auto; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar"><a href="./" class="btn link">→ חזרה לאפליקציה</a></header>
+  <div class="card">
+    <h2>במחשב (כרום)</h2>
+    <ol>
+      <li>ודאי שסרגל הסימניות מוצג: <b>Ctrl+Shift+B</b>.</li>
+      <li>גררי את הכפתור הזה אל סרגל הסימניות:<br><a class="bm" id="bm" href="#">עצב לנעמה</a></li>
+      <li>בשירונט, כשאת בדף של שיר (מילים או אקורדים), לחצי על "עצב לנעמה" בסרגל.</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h2>באייפון (כרום)</h2>
+    <ol>
+      <li>לחצי כאן כדי להעתיק את הקוד: <button id="copy" class="btn primary small">העתקת הקוד</button></li>
+      <li>בכרום, פתחי כל אתר, לחצי על ⋯ ואז <b>הוספה לסימניות</b>.</li>
+      <li>פתחי את הסימניות (⋯ ← סימניות), לחצי לחיצה ארוכה על הסימנייה החדשה ← <b>עריכת סימנייה</b>.</li>
+      <li>שם: <b>נעמה</b>. בכתובת: מחקי הכל והדביקי את הקוד. שמרי.</li>
+      <li>בשירונט, בדף של שיר: הקלידי בשורת הכתובת <b>נעמה</b> ובחרי את הסימנייה מההצעות.</li>
+    </ol>
+    <code id="code"></code>
+  </div>
+</div>
+<script type="module">
+  import { grab } from './js/grab.js';
+  const href = 'javascript:' + encodeURIComponent('(' + grab.toString().replace(/\s+/g, ' ') + ')()');
+  document.getElementById('bm').href = href;
+  document.getElementById('bm').onclick = (e) => { e.preventDefault(); alert('צריך לגרור את הכפתור לסרגל הסימניות, לא ללחוץ עליו כאן'); };
+  document.getElementById('code').textContent = href;
+  document.getElementById('copy').onclick = async (e) => {
+    try { await navigator.clipboard.writeText(href); e.target.textContent = 'הועתק'; }
+    catch { const r = document.createRange(); r.selectNodeContents(document.getElementById('code')); getSelection().removeAllRanges(); getSelection().addRange(r); e.target.textContent = 'הקוד מסומן, העתיקי אותו ידנית'; }
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+/* The A4 logo page – shared by preview, measuring and print */
+.page {
+  --fs: 16pt;
+  --navy: #26385A; --slate: #5F7189; --gold: #B08A5E; --teal: #2F7F8A;
+  position: relative; width: 210mm; height: 297mm; background: #fff; overflow: hidden;
+  font-family: Arial, "Liberation Sans", Helvetica, sans-serif; color: var(--navy);
+  direction: rtl; box-sizing: border-box;
+}
+.page .bg { position: absolute; inset: 0; width: 210mm; height: 297mm; pointer-events: none; }
+.page .content { position: absolute; display: flex; flex-direction: column; overflow: hidden; }
+.page .sh { text-align: center; margin-bottom: 7mm; flex: none; }
+.page .sh h1 { font-size: 30pt; font-weight: 700; margin: 0; line-height: 1.15; }
+.page .sh .perf { font-size: 14pt; color: var(--slate); margin-top: 1mm; }
+.page .sh .cred { font-size: 10pt; color: var(--slate); margin-top: 1mm; }
+.page .cols { flex: 1 1 auto; min-height: 0; }
+.page .cols.two { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0; }
+.page .cols.two .col + .col { border-inline-start: 0.35mm solid #C9A57C; }
+.page .col { min-width: 0; padding: 0 3mm; }
+.page .st { margin-bottom: calc(var(--fs) * 0.85); font-size: var(--fs); }
+.page .st:last-child { margin-bottom: 0; }
+.page .st.chorus .lt { font-weight: 700; }
+.page .lbl { font-size: 9pt; font-weight: 700; color: var(--gold); text-align: center; margin-bottom: 0.6mm; }
+.page .st.note .lt { font-size: 10.5pt; font-style: italic; font-weight: 700; color: var(--gold); }
+.page .ln { line-height: 1.22; }
+.page .lt { white-space: nowrap; overflow: hidden; text-align: center; }
+.page .chords { white-space: pre; overflow: hidden; text-align: center; font-size: calc(var(--fs) * 0.72); font-weight: 700; color: var(--teal); line-height: 1.1; }
+.page .voice { font-size: 0.62em; font-weight: 400; color: var(--slate); }
+.page .qr { position: absolute; left: 14mm; bottom: 19mm; width: 20mm; height: 20mm; }
+.page .qr svg, .page .qr img { width: 100%; height: 100%; display: block; }
+
+/* measuring stage */
+.measure { position: fixed; left: -3000px; top: 0; visibility: hidden; pointer-events: none; }
+
+@page { size: A4; margin: 0; }
+@media print {
+  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+  #app { display: none !important; }
+  #print-root { display: block !important; }
+  #print-root .page { break-after: page; page-break-after: always; margin: 0; box-shadow: none; transform: none !important; }
+  #print-root .page:last-child { break-after: auto; page-break-after: auto; }
+  #print-root .page:not(.full) .bg { display: none; }
+  .page { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+#print-root { display: none; }

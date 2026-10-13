@@ -2,18 +2,148 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>נעמה שירתך</title>
-<link rel="icon" href="logo.png">
-<link rel="apple-touch-icon" href="logo.png">
-<style>
-body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#fff;color:#26385A;font-family:system-ui,sans-serif;padding:16px;box-sizing:border-box}
-img{height:220px;max-width:100%}
-p{font-size:18px;margin:0}
-</style>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon-180.png">
+<meta name="theme-color" content="#26385A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="נעמה">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/page.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
 </head>
 <body>
-<img src="logo.png" alt="נעמה שירתך">
-<p>היי נעמה, האפליקציה בבנייה. בקרוב כאן.</p>
+<div id="app">
+
+  <!-- Login -->
+  <section id="v-login" class="view center" hidden>
+    <img class="hero-logo" src="img/logo.png" alt="נעמה שירתך">
+    <p class="lead">ברוכה הבאה</p>
+    <button id="btn-login" class="btn primary big">כניסה עם חשבון Google</button>
+    <p id="login-msg" class="msg"></p>
+  </section>
+
+  <!-- Home -->
+  <section id="v-home" class="view" hidden>
+    <header class="topbar">
+      <img src="img/logo.png" alt="" class="mini-logo">
+      <div class="greet" id="greet">היי</div>
+      <button id="btn-logout" class="btn link small">יציאה</button>
+    </header>
+
+    <div class="card search-card">
+      <label for="q" class="q-label">איזה שיר נכין היום?</label>
+      <div class="q-row">
+        <input id="q" type="search" autocomplete="off" placeholder="שם השיר">
+        <button id="btn-mic" class="btn icon" aria-label="אמרי את שם השיר" hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </button>
+      </div>
+      <div id="q-results"></div>
+      <div class="row gap">
+        <button id="btn-shironet" class="btn primary">חיפוש בשירונט</button>
+        <button id="btn-paste-toggle" class="btn ghost">הדבקה ידנית</button>
+      </div>
+      <div id="paste-box" hidden>
+        <label for="paste" class="small-label">הדביקי כאן את השיר (שם, מבצע, מילים ולחן, ואחר כך המילים)</label>
+        <textarea id="paste" rows="10"></textarea>
+        <button id="btn-paste-go" class="btn primary">עצבי את השיר</button>
+      </div>
+      <p class="hint" id="mic-hint" hidden>אפשר גם לדבר: לחצי על המיקרופון שבמקלדת ואמרי את שם השיר.</p>
+    </div>
+
+    <div class="card">
+      <div class="row between">
+        <h2>הרפרטואר</h2>
+        <div class="seg" role="group" aria-label="מיון">
+          <button class="seg-b on" data-sort="title">לפי שם השיר</button>
+          <button class="seg-b" data-sort="performer">לפי היוצר</button>
+        </div>
+      </div>
+      <ul id="rep" class="rep"></ul>
+      <p id="rep-empty" class="hint">עוד אין שירים שמורים. כל שיר שתעצבי יישמר כאן אוטומטית.</p>
+    </div>
+
+    <div class="foot-links">
+      <a href="install.html">התקנת הכפתור "עצב לנעמה" לשירונט</a>
+      <span class="soon">בונה שירון – בקרוב</span>
+    </div>
+  </section>
+
+  <!-- Song -->
+  <section id="v-song" class="view" hidden>
+    <header class="topbar">
+      <button id="btn-back" class="btn link">→ חזרה</button>
+      <div class="greet" id="song-title-bar"></div>
+      <span id="save-state" class="save-state"></span>
+    </header>
+
+    <div class="tools card">
+      <div class="seg" role="group" aria-label="איזה דף">
+        <button class="seg-b on" data-kind="choir">דף מקהלה</button>
+        <button class="seg-b" data-kind="naama" id="tab-naama">דף אקורדים לנעמה</button>
+      </div>
+      <a id="get-chords" class="btn ghost small" target="_blank" rel="noopener" hidden>הוספת אקורדים משירונט</a>
+
+      <div class="opts">
+        <div class="seg" role="group" aria-label="סוג הדפסה">
+          <button class="seg-b on" data-print="text">רק טקסט</button>
+          <button class="seg-b" data-print="full">דף מלא</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="opt-niqqud"> בלי ניקוד</label>
+        <span id="transpose" class="transpose" hidden>
+          סולם
+          <button class="btn icon small" data-tr="-1" aria-label="להוריד חצי טון">−</button>
+          <b id="tr-val">0</b>
+          <button class="btn icon small" data-tr="1" aria-label="להעלות חצי טון">+</button>
+        </span>
+      </div>
+
+      <div id="layout-choice" class="layout-choice" hidden></div>
+
+      <details class="more">
+        <summary>אפשרויות נוספות</summary>
+        <div class="more-body">
+          <div>
+            <button id="btn-voices" class="btn ghost small">סימון קולות</button>
+            <span class="hint inline" id="voices-hint" hidden>לחצי על שורה בדף כדי לסמן לה קול</span>
+          </div>
+          <div class="row gap wrap">
+            <label class="small-label" for="qr-url">קוד QR (קישור להקלטה)</label>
+            <input id="qr-url" type="url" placeholder="https://www.youtube.com/..." dir="ltr">
+          </div>
+          <div>
+            <button id="btn-edit" class="btn ghost small">עריכת הטקסט</button>
+          </div>
+          <div id="edit-box" hidden>
+            <div class="row gap wrap">
+              <input id="ed-title" placeholder="שם השיר"><input id="ed-perf" placeholder="מבצע">
+            </div>
+            <input id="ed-cred" placeholder="קרדיטים, למשל: מילים: ... | לחן: ...">
+            <textarea id="ed-text" rows="14"></textarea>
+            <div class="row gap"><button id="btn-ed-save" class="btn primary small">החלה</button><button id="btn-ed-cancel" class="btn ghost small">ביטול</button></div>
+          </div>
+          <div><button id="btn-delete" class="btn danger small">מחיקה מהרפרטואר</button>
+            <span id="del-confirm" hidden> בטוחה? <button id="btn-del-yes" class="btn danger small">כן, למחוק</button> <button id="btn-del-no" class="btn ghost small">לא</button></span></div>
+        </div>
+      </details>
+
+      <button id="btn-print" class="btn primary big">הדפסה</button>
+      <p class="hint">בחלון ההדפסה: גודל בפועל (100%), שוליים "ללא", ובלי כותרות עליונות ותחתונות.</p>
+    </div>
+
+    <div id="preview" class="preview"></div>
+  </section>
+
+  <div id="voice-menu" class="voice-menu" hidden></div>
+  <div id="toast" class="toast" hidden></div>
+</div>
+
+<div id="print-root"></div>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>

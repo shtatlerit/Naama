@@ -130,6 +130,7 @@ function refresh() {
   $('#tab-naama').title = cur.hasChords ? '' : 'לשיר הזה עוד אין אקורדים';
   const cu = chordsUrl();
   $('#get-chords').hidden = cur.hasChords || !cu; if (cu) $('#get-chords').href = cu;
+  $('#btn-spotify').href = 'https://open.spotify.com/search/' + encodeURIComponent([cur.title, cur.performer].filter(Boolean).join(' '));
   $('#transpose').hidden = !naama; $('#tr-val').textContent = (cur.opts.transpose > 0 ? '+' : '') + cur.opts.transpose;
 
   const opts = { chords: naama, transpose: cur.opts.transpose, noNiqqud: cur.opts.noNiqqud, full: view.print === 'full', qrSvg: qrSvg() };

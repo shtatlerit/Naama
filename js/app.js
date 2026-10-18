@@ -1,5 +1,7 @@
 import { parseImport, mergeChords, toText, fromText, stripMdLinks } from './parse.js';
 import { computeLayout, pagesHTML } from './layout.js';
+import { savePdf, saveWord } from './export.js';
+import { vocalize } from './niqqud.js';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -76,6 +78,7 @@ let settings = { voices: DEFAULT_VOICES };
 let cur = null;           // current song
 let view = { kind: 'choir', print: 'text', layoutPick: 'one', voicing: false };
 let lastLayout = null;
+let lastChosen = null;
 let sortBy = 'title';
 
 /* ---------------- home ---------------- */
@@ -106,6 +109,7 @@ function openSong(song) {
   $('#edit-box').hidden = true; $('#del-confirm').hidden = true; $('#voices-hint').hidden = true;
   $('#btn-voices').textContent = 'סימון קולות';
   $('#btn-delete').hidden = !cur.id;
+  $('#btn-niqqud-undo').hidden = !cur.preNiqqud;
   setSeg('[data-kind]', 'choir'); setSeg('[data-print]', view.print);
   show('v-song');
   refresh();
@@ -146,6 +150,7 @@ function refresh() {
       <button class="btn small ${pick === 'two' ? 'primary' : 'ghost'}" data-pick="two">שני עמודים (גודל ${two.font})</button>`;
   } else lc.hidden = true;
   const chosen = pick === 'two' ? two : one;
+  lastChosen = chosen;
   const pv = $('#preview');
   pv.classList.toggle('text-only', view.print === 'text');
   pv.classList.toggle('voicing', view.voicing);
@@ -286,6 +291,38 @@ function wire() {
   $('#btn-del-no').onclick = () => ($('#del-confirm').hidden = true);
   $('#btn-del-yes').onclick = async () => { try { await store.remove(cur.id); songs = songs.filter((s) => s.id !== cur.id); toast('השיר נמחק'); show('v-home'); renderHome(); } catch { toast('המחיקה לא הצליחה'); } };
   $('#btn-print').onclick = () => { refresh(); setTimeout(() => window.print(), 50); };
+  const fileBase = () => (cur.title || 'שיר') + (view.kind === 'naama' ? ' - אקורדים' : '');
+  const busy = async (btn, label, fn) => { const t = btn.textContent; btn.disabled = true; btn.textContent = label; try { await fn(); } catch (e) { console.error(e); toast('השמירה לא הצליחה. נסי שוב.'); } finally { btn.disabled = false; btn.textContent = t; } };
+  $('#btn-pdf').onclick = (e) => busy(e.currentTarget, 'מכינה PDF…', async () => { refresh(); if (lastChosen) await savePdf(pagesHTML(lastChosen), view.print === 'full', fileBase()); });
+  $('#btn-word').onclick = (e) => busy(e.currentTarget, 'מכינה Word…', async () => { refresh(); if (lastChosen) await saveWord(cur, lastChosen, view.print === 'full', fileBase()); });
+  $('#btn-niqqud').onclick = async (e) => {
+    const btn = e.currentTarget;
+    const lines = cur.stanzas.flatMap((s) => s.lines).filter((l) => l.t.trim());
+    const text = [cur.title, ...lines.map((l) => l.t)].join('\n');
+    btn.disabled = true; btn.textContent = 'מנקדת…';
+    try {
+      const out = (await vocalize(text)).split('\n');
+      if (out.length !== lines.length + 1) throw new Error('lines mismatch ' + out.length + '/' + (lines.length + 1));
+      cur.preNiqqud = { title: cur.title, lines: lines.map((l) => l.t) };
+      cur.title = out[0].trim() || cur.title;
+      lines.forEach((l, i) => { l.t = out[i + 1].trim() || l.t; });
+      cur.opts.noNiqqud = false; $('#opt-niqqud').checked = false;
+      $('#btn-niqqud-undo').hidden = false; $('#song-title-bar').textContent = cur.title;
+      refresh(); scheduleSave(); toast('השיר נוקד. כדאי לעבור על הניקוד לפני הדפסה.');
+    } catch (err) {
+      console.warn(err);
+      try { await navigator.clipboard.writeText(text); } catch {}
+      toast('הניקוד האוטומטי לא זמין כרגע. העתקתי את השיר; הדביקי באתר דיקטה ואז ב"עריכת הטקסט".', 6000);
+      window.open('https://nakdan.dicta.org.il/', '_blank', 'noopener');
+    } finally { btn.disabled = false; btn.textContent = 'ניקוד אוטומטי'; }
+  };
+  $('#btn-niqqud-undo').onclick = () => {
+    const p = cur.preNiqqud; if (!p) return;
+    const lines = cur.stanzas.flatMap((s) => s.lines).filter((l) => l.t.trim());
+    if (lines.length === p.lines.length) lines.forEach((l, i) => (l.t = p.lines[i]));
+    cur.title = p.title; delete cur.preNiqqud; $('#btn-niqqud-undo').hidden = true; $('#song-title-bar').textContent = cur.title;
+    refresh(); scheduleSave();
+  };
   addEventListener('hashchange', () => { const d = readImportFromHash(); if (d && user) handleImport(d); });
 }
 

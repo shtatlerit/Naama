@@ -101,7 +101,7 @@ function layoutOne(song, stanzas, opts, withHead, pageNo) {
     const f = bestFont(html);
     // a single column wins ties; two columns must give a clearly bigger font
     const score = c.split == null ? f + 0.75 : f;
-    if (!best || score > best.score) best = { ...c, font: f, html, score };
+    if (!best || score > best.score) best = { ...c, font: f, html, score, st: stanzas, withHead, opts };
   }
   return best;
 }

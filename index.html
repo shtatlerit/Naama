@@ -118,6 +118,11 @@
             <a id="btn-spotify" class="btn ghost small" target="_blank" rel="noopener">חיפוש בספוטיפיי</a>
           </div>
           <p class="hint">בספוטיפיי: בחרי את ההקלטה, ⋯ ← שיתוף ← העתקת קישור, והדביקי בשדה.</p>
+          <div class="row gap wrap">
+            <button id="btn-niqqud" class="btn ghost small">ניקוד אוטומטי</button>
+            <button id="btn-niqqud-undo" class="btn link small" hidden>החזרת הטקסט בלי הניקוד</button>
+            <span class="hint inline">ניקוד אוטומטי של דיקטה. כדאי לעבור עליו לפני הדפסה.</span>
+          </div>
           <div>
             <button id="btn-edit" class="btn ghost small">עריכת הטקסט</button>
           </div>
@@ -134,7 +139,11 @@
         </div>
       </details>
 
-      <button id="btn-print" class="btn primary big">הדפסה</button>
+      <div class="row gap wrap">
+        <button id="btn-print" class="btn primary big">הדפסה</button>
+        <button id="btn-pdf" class="btn ghost">שמירה כ-PDF</button>
+        <button id="btn-word" class="btn ghost">שמירה כ-Word</button>
+      </div>
       <p class="hint">בחלון ההדפסה: גודל בפועל (100%), שוליים "ללא", ובלי כותרות עליונות ותחתונות.</p>
     </div>
 

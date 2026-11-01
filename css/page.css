@@ -1,6 +1,6 @@
 /* The A4 logo page – shared by preview, measuring and print */
 .page {
-  --fs: 16pt;
+  --fs: 16pt; --air: 0;
   --navy: #26385A; --slate: #5F7189; --gold: #B08A5E; --teal: #2F7F8A;
   position: relative; width: 210mm; height: 297mm; background: #fff; overflow: hidden;
   font-family: Arial, "Liberation Sans", Helvetica, sans-serif; color: var(--navy);
@@ -16,12 +16,12 @@
 .page .cols.two { display: grid; grid-template-columns: 1fr 1fr; column-gap: 0; }
 .page .cols.two .col + .col { border-inline-start: 0.35mm solid #C9A57C; }
 .page .col { min-width: 0; padding: 0 3mm; }
-.page .st { margin-bottom: calc(var(--fs) * 0.85); font-size: var(--fs); }
+.page .st { margin-bottom: calc(var(--fs) * (0.85 + 0.9 * var(--air))); font-size: var(--fs); }
 .page .st:last-child { margin-bottom: 0; }
 .page .st.chorus .lt { font-weight: 700; }
 .page .lbl { font-size: 9pt; font-weight: 700; color: var(--gold); text-align: center; margin-bottom: 0.6mm; }
 .page .st.note .lt { font-size: 10.5pt; font-style: italic; font-weight: 700; color: var(--gold); }
-.page .ln { line-height: 1.22; }
+.page .ln { line-height: calc(1.22 + 0.33 * var(--air)); }
 .page .lt { white-space: nowrap; overflow: hidden; text-align: center; }
 .page .chords { white-space: pre; overflow: hidden; text-align: center; font-size: calc(var(--fs) * 0.72); font-weight: 700; color: var(--teal); line-height: 1.1; }
 .page .voice { font-size: 0.62em; font-weight: 400; color: var(--slate); }

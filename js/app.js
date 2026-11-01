@@ -1,4 +1,4 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks } from './parse.js';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js';
 import { computeLayout, pagesHTML } from './layout.js';
 import { savePdf, saveWord } from './export.js';
 import { vocalize } from './niqqud.js';
@@ -101,6 +101,7 @@ async function loadSongs() {
 /* ---------------- song view ---------------- */
 function openSong(song) {
   cur = song;
+  if (cur.stanzas) markChoruses(cur.stanzas);
   cur.opts = { noNiqqud: false, transpose: 0, qrUrl: '', ...(cur.opts || {}) };
   view = { kind: 'choir', print: view.print, layoutPick: cur.opts.layoutPick || 'one', voicing: false };
   $('#song-title-bar').textContent = cur.title || 'שיר';

@@ -65,6 +65,27 @@ function toStanzas(bodyLines) {
 
 const norm = (s) => s.replace(/[֑-ׇ]/g, '').replace(/[.,!?;:"'״׳…\-–]/g, '').replace(/\s+/g, ' ').trim();
 
+// chorus: a stanza repeated elsewhere almost word for word (at least 3/4 of its lines match).
+// Verses that only share an opening line (e.g. "אילו ציפורים...") stay verses.
+// Also used on songs saved before this rule, so old repertoire entries are corrected when opened.
+export function markChoruses(out) {
+  const lineSet = (s) => s.lines.map((l) => norm(l.t)).filter(Boolean);
+  const same = (a, b) => {
+    const A = lineSet(a), B = lineSet(b);
+    if (A.length < 2 || B.length < 2) return false;
+    const n = Math.max(A.length, B.length);
+    let hit = 0; A.forEach((x, i) => { if (x === B[i]) hit++; });
+    return hit / n >= 0.75;
+  };
+  const refd = new Set(out.filter((s) => s.type === 'ref').map((s) => s.of));
+  out.forEach((s, i) => {
+    if (s.type !== 'verse' && s.type !== 'chorus') return;
+    const rep = refd.has(i) || out.some((o, j) => j !== i && (o.type === 'verse' || o.type === 'chorus') && same(s, o));
+    s.type = rep ? 'chorus' : 'verse';
+  });
+  return out;
+}
+
 // Build model stanzas, attach chords, detect chorus/ref/note
 function classify(rawStanzas) {
   const out = rawStanzas.map((ls) => {
@@ -94,20 +115,7 @@ function classify(rawStanzas) {
     const target = out.find((o) => o !== s && o.lines.length > s.lines.length && norm(o.lines[0].t).startsWith(key.slice(0, Math.max(6, key.length - 2))));
     if (target) { s.type = 'ref'; s.of = out.indexOf(target); if (target.type === 'verse') target.type = 'chorus'; }
   });
-  // chorus: a stanza repeated elsewhere almost word for word (at least 3/4 of its lines match).
-  // Verses that only share an opening line (e.g. "אילו ציפורים...") stay verses.
-  const lineSet = (s) => s.lines.map((l) => norm(l.t)).filter(Boolean);
-  const same = (a, b) => {
-    const A = lineSet(a), B = lineSet(b);
-    if (A.length < 2 || B.length < 2) return false;
-    const n = Math.max(A.length, B.length);
-    let hit = 0; A.forEach((x, i) => { if (x === B[i]) hit++; });
-    return hit / n >= 0.75;
-  };
-  out.forEach((s, i) => {
-    if (s.type !== 'verse') return;
-    if (out.some((o, j) => j !== i && (o.type === 'verse' || o.type === 'chorus') && same(s, o))) s.type = 'chorus';
-  });
+  markChoruses(out);
   // a stanza that directly follows a chorus-titled block of "אמן..." style repeated lines stays verse
   return out;
 }

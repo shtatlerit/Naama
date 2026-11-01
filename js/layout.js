@@ -142,10 +142,30 @@ export function computeLayout(song, opts) {
     if (bestTwo) bestTwo.pages = bestTwo.pages.map((p) => ({ ...p, font: bestTwo.font }));
     result.twoPages = bestTwo;
   }
+  addAir(result.onePage); addAir(result.twoPages);
   if (stage) stage.innerHTML = '';
   return result;
 }
 
+// Use leftover height: open up line spacing and stanza gaps (up to a limit) so the song fills the page.
+function airFor(html, font) {
+  const s = getStage();
+  s.innerHTML = html;
+  const page = s.firstElementChild;
+  page.style.setProperty('--fs', font + 'pt');
+  const content = page.querySelector('.content');
+  const ok = (t) => { page.style.setProperty('--air', t); return content.scrollHeight <= content.clientHeight + 1; };
+  if (!ok(0.05)) return 0;
+  let lo = 0.05, hi = 1;
+  if (ok(hi)) return 1;
+  while (hi - lo > 0.03) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
+  return Math.floor(lo * 100) / 100;
+}
+function addAir(layout) {
+  if (!layout) return;
+  layout.pages.forEach((p) => { p.air = airFor(p.html, p.font); });
+}
+
 export function pagesHTML(layout) {
-  return layout.pages.map((p) => p.html.replace('<section class="page', `<section style="--fs:${p.font}pt" class="page`)).join('');
+  return layout.pages.map((p) => p.html.replace('<section class="page', `<section style="--fs:${p.font}pt;--air:${p.air || 0}" class="page`)).join('');
 }

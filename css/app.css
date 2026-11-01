@@ -53,7 +53,14 @@ textarea { resize: vertical; line-height: 1.5; }
 .seg-b:disabled { color: #A8B1BF; cursor: default; }
 
 .rep { list-style: none; margin: 0; padding: 0; }
-.rep li { border-top: 1px solid var(--line); }
+.rep li { border-top: 1px solid var(--line); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rep li > button[data-id] { flex: 1; min-width: 0; }
+.rep button.del { all: unset; cursor: pointer; padding: 10px 8px; font-size: 16px; opacity: .55; }
+.rep button.del:hover, .rep button.del:focus-visible { opacity: 1; outline: 2px solid var(--gold); border-radius: 6px; }
+.rep .del-ask { flex-basis: 100%; justify-content: flex-end; font-size: 14px; color: var(--slate); padding: 4px 0 8px; display: flex; gap: 8px; align-items: center; }
+.rep .del-ask[hidden] { display: none; }
+.rep .del-ask button { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); font-size: 14px; }
+.rep .del-ask .yes { background: #B3261E; color: #fff; border-color: #B3261E; }
 .rep li:first-child { border-top: 0; }
 .rep button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 12px 4px; }
 .rep button:focus-visible { outline: 2px solid var(--gold); }

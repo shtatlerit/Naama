@@ -88,7 +88,7 @@ function renderHome() {
   const filter = $('#q').value.trim();
   const list = [...songs].sort((a, b) => (a[sortBy] || '').localeCompare(b[sortBy] || '', 'he'));
   const shown = filter ? list.filter((s) => (s.title + ' ' + s.performer).includes(filter)) : list;
-  $('#rep').innerHTML = shown.map((s) => `<li><button data-id="${esc(s.id)}"><span class="t">${esc(s.title)}</span><span class="p">${esc(s.performer || '')}</span></button></li>`).join('');
+  $('#rep').innerHTML = shown.map((s) => `<li data-row="${esc(s.id)}"><button data-id="${esc(s.id)}"><span class="t">${esc(s.title)}</span><span class="p">${esc(s.performer || '')}</span></button><button class="del" data-del="${esc(s.id)}" aria-label="מחיקת ${esc(s.title)}" title="מחיקה">🗑</button><span class="del-ask" hidden>למחוק? <button class="yes" data-del-yes="${esc(s.id)}">כן, למחוק</button> <button class="no" data-del-no>ביטול</button></span></li>`).join('');
   $('#rep-empty').hidden = songs.length > 0;
   const matches = filter ? list.filter((s) => s.title && (s.title.includes(filter) || filter.includes(s.title))) : [];
   $('#q-results').innerHTML = matches.length ? `<div class="found"><div>כבר ברפרטואר:</div>${matches.slice(0, 5).map((s) => `<button data-id="${esc(s.id)}">${esc(s.title)} <span>· ${esc(s.performer || '')}</span></button>`).join('')}</div>` : '';
@@ -263,7 +263,19 @@ function wire() {
   };
   $('#btn-paste-toggle').onclick = () => { $('#paste-box').hidden = !$('#paste-box').hidden; if (!$('#paste-box').hidden) $('#paste').focus(); };
   $('#btn-paste-go').onclick = () => { const t = $('#paste').value; if (!t.trim()) return; handleImport({ text: t }); $('#paste').value = ''; $('#paste-box').hidden = true; };
-  $('#rep').onclick = $('#q-results').onclick = (e) => { const b = e.target.closest('button[data-id]'); if (b) openSong(songs.find((s) => s.id === b.dataset.id)); };
+  $('#rep').onclick = $('#q-results').onclick = async (e) => {
+    const row = e.target.closest('li[data-row]');
+    if (e.target.closest('[data-del]')) { row.querySelector('.del-ask').hidden = false; e.target.closest('[data-del]').hidden = true; return; }
+    if (e.target.closest('[data-del-no]')) { row.querySelector('.del-ask').hidden = true; row.querySelector('[data-del]').hidden = false; return; }
+    const yes = e.target.closest('[data-del-yes]');
+    if (yes) {
+      const id = yes.dataset.delYes; yes.disabled = true;
+      try { await store.remove(id); songs = songs.filter((x) => x.id !== id); toast('השיר נמחק מהרפרטואר'); renderHome(); }
+      catch { yes.disabled = false; toast('המחיקה לא הצליחה'); }
+      return;
+    }
+    const b = e.target.closest('button[data-id]'); if (b) openSong(songs.find((s) => s.id === b.dataset.id));
+  };
   $$('[data-sort]').forEach((b) => (b.onclick = () => { sortBy = b.dataset.sort; setSeg('[data-sort]', sortBy); renderHome(); }));
 
   $('#btn-back').onclick = () => { show('v-home'); renderHome(); };

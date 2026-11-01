@@ -264,7 +264,9 @@ function wire() {
     const url = 'https://shironet.mako.co.il/search?q=' + encodeURIComponent(q);
     // From the iPhone home-screen app, links open in a small in-app browser that has no bookmarks,
     // so the "עצב לנעמה" button cannot be used there. x-safari-https:// opens the real Safari (iOS 17+).
-    if (navigator.standalone === true) location.href = 'x-safari-' + url;
+    // On iPhone the button lives only in Safari (Chrome for iPhone cannot run it), so always hand off to Safari.
+    const iphone = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (iphone) location.href = 'x-safari-' + url;
     else window.open(url, '_blank', 'noopener');
   };
   $('#btn-paste-toggle').onclick = () => { $('#paste-box').hidden = !$('#paste-box').hidden; if (!$('#paste-box').hidden) $('#paste').focus(); };

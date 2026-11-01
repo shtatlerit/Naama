@@ -1,5 +1,5 @@
 // Save the current song as PDF (exact picture of the preview pages) or Word (editable, on the logo template).
-import { transposeChords, stripNiqqud } from './parse.js?v=20261101-1102';
+import { transposeChords, stripNiqqud } from './parse.js?v=20261101-1109';
 
 const loaded = {};
 function loadScript(src) {
@@ -16,6 +16,33 @@ const safeName = (s) => (s || 'שיר').replace(/[\\/:*?"<>|]+/g, ' ').trim();
 
 /* ---------------- PDF ---------------- */
 export async function savePdf(pagesHtml, full, fileBase) {
+  download(await pdfBlob(pagesHtml, full), safeName(fileBase) + '.pdf');
+}
+
+// Share the PDF (WhatsApp etc.) through the phone's or computer's share sheet.
+// Returns 'shared' | 'cancelled' | 'unsupported' (then the PDF is downloaded instead).
+// Making the PDF takes a few seconds; iPhone may then refuse to open the share sheet ('again'):
+// the ready file is kept so the next tap shares it at once.
+let ready = null;
+export async function sharePdf(pagesHtml, full, fileBase, text) {
+  let file = ready && ready.key === fileBase + full ? ready.file : null;
+  ready = null;
+  if (!file) {
+    const blob = await pdfBlob(pagesHtml, full);
+    file = new File([blob], safeName(fileBase) + '.pdf', { type: 'application/pdf' });
+  }
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text }); return 'shared'; }
+    catch (e) {
+      if (e.name === 'AbortError') return 'cancelled';
+      if (e.name === 'NotAllowedError') { ready = { key: fileBase + full, file }; return 'again'; }
+    }
+  }
+  download(file, file.name);
+  return 'unsupported';
+}
+
+async function pdfBlob(pagesHtml, full) {
   await Promise.all([loadScript('js/vendor/html-to-image.js'), loadScript('js/vendor/jspdf.umd.min.js')]);
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:-4000px;top:0;';
@@ -35,7 +62,7 @@ export async function savePdf(pagesHtml, full, fileBase) {
       if (i) pdf.addPage();
       pdf.addImage(img, 'JPEG', 0, 0, 210, 297);
     }
-    download(pdf.output('blob'), safeName(fileBase) + '.pdf');
+    return pdf.output('blob');
   } finally { host.remove(); }
 }
 

@@ -1,7 +1,7 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1102';
-import { computeLayout, pagesHTML } from './layout.js?v=20261101-1102';
-import { savePdf, saveWord } from './export.js?v=20261101-1102';
-import { vocalize } from './niqqud.js?v=20261101-1102';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1109';
+import { computeLayout, pagesHTML } from './layout.js?v=20261101-1109';
+import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1109';
+import { vocalize } from './niqqud.js?v=20261101-1109';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -35,7 +35,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261101-1102'),
+    import('./firebase-config.js?v=20261101-1109'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
@@ -79,6 +79,7 @@ let cur = null;           // current song
 let view = { kind: 'choir', print: 'text', layoutPick: 'one', voicing: false };
 let lastLayout = null;
 let lastChosen = null;
+const NAAMA_WA = '972509066939'; // נעמה, 050-9066939 (from the logo page)
 let sortBy = 'title';
 
 /* ---------------- home ---------------- */
@@ -307,6 +308,17 @@ function wire() {
   const fileBase = () => (cur.title || 'שיר') + (view.kind === 'naama' ? ' - אקורדים' : '');
   const busy = async (btn, label, fn) => { const t = btn.textContent; btn.disabled = true; btn.textContent = label; try { await fn(); } catch (e) { console.error(e); toast('השמירה לא הצליחה. נסי שוב.'); } finally { btn.disabled = false; btn.textContent = t; } };
   $('#btn-pdf').onclick = (e) => busy(e.currentTarget, 'מכינה PDF…', async () => { refresh(); if (lastChosen) await savePdf(pagesHTML(lastChosen), view.print === 'full', fileBase()); });
+  // WhatsApp: a link cannot attach a file, so the PDF goes through the share sheet (choose WhatsApp → נעמה).
+  // Where sharing files is not supported, the PDF is downloaded and WhatsApp opens on Naama's chat to attach it.
+  $('#btn-wa').onclick = (e) => busy(e.currentTarget, 'מכינה PDF…', async () => {
+    refresh(); if (!lastChosen) return;
+    const r = await sharePdf(pagesHTML(lastChosen), view.print === 'full', fileBase(), cur.title || '');
+    if (r === 'again') toast('ה-PDF מוכן. לחצי שוב על "שליחה לנעמה בוואטסאפ".', 6000);
+    if (r === 'unsupported') {
+      toast('ה-PDF ירד למחשב. בוואטסאפ שנפתח, צרפי אותו בשיחה (📎).', 7000);
+      window.open('https://wa.me/' + NAAMA_WA + '?text=' + encodeURIComponent(cur.title || ''), '_blank', 'noopener');
+    }
+  });
   $('#btn-word').onclick = (e) => busy(e.currentTarget, 'מכינה Word…', async () => { refresh(); if (lastChosen) await saveWord(cur, lastChosen, view.print === 'full', fileBase()); });
   $('#btn-niqqud').onclick = async (e) => {
     const btn = e.currentTarget;

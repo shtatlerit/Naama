@@ -1,7 +1,7 @@
 // Songbook: a cover (logo page with a stronger watermark), a table of contents and the chosen songs,
 // in the order Naama sets, with page numbers. Two short songs may share a page.
-import { computeLayout } from './layout.js?v=20261101-2001';
-import { markChoruses } from './parse.js?v=20261101-2001';
+import { computeLayout } from './layout.js?v=20261101-2004';
+import { markChoruses } from './parse.js?v=20261101-2004';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -30,7 +30,7 @@ export function bookDates(iso) {
 /* ---------- page pieces ---------- */
 const HALF = { top: { top: 46, bottom: 137.5 }, bottom: { top: 167.5, bottom: 16 }, line: 163.5 };
 const bg = (full, img = 'page-full.jpg') => (full ? `<img class="bg" src="img/${img}" alt="">` : '');
-const pgno = (n) => `<div class="pgno">${n}</div>`;
+const pgno = (n) => `<div class="pgno">– ${n} –</div>`;
 
 function contentOf(p) {
   // a laid-out page → its content block, carrying its own font size and spacing

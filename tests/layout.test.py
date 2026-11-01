@@ -43,7 +43,7 @@ with sync_playwright() as pw:
     pg.click('#bk-build'); pg.wait_for_selector('#bk-status:has-text("מוכן")', timeout=120000)
     info = pg.evaluate("""() => { const p = [...document.querySelectorAll('#bk-preview .page')];
       return { n: p.length, cover: !!p[0].querySelector('.cover'), toc: !!p[1].querySelector('.toc'),
-               nums: p.slice(2).map(x => x.querySelector('.pgno')?.textContent),
+               nums: p.slice(2).map(x => (x.querySelector('.pgno')?.textContent || '').replace(/[^0-9]/g, '')),
                tocNums: [...p[1].querySelectorAll('.tn')].map(x => x.textContent),
                over: p.some(x => [...x.querySelectorAll('.content')].some(c => c.scrollHeight > c.clientHeight + 1)) } }""")
     ok(info['cover'] and info['toc'], 'songbook: cover and table of contents')

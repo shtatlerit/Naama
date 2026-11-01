@@ -31,7 +31,8 @@
 .page .sh.compact .perf { font-size: 12pt; }
 .page .sh.compact .cred { font-size: 9pt; }
 /* songbook */
-.page .pgno { position: absolute; right: 14mm; bottom: 9.5mm; font-size: 10pt; color: var(--slate); }
+/* page number centred at the top: the bottom centre already holds Naama's name, the top centre is free */
+.page .pgno { position: absolute; left: 0; right: 0; top: 12mm; text-align: center; font-size: 11pt; color: var(--slate); letter-spacing: 0.5pt; }
 .page .split { position: absolute; left: 30mm; right: 30mm; height: 0; border-top: 0.35mm solid #C9A57C; }
 .page .cover { position: absolute; left: 14mm; right: 14mm; top: 46mm; text-align: center; }
 .page .cover h1 { font-size: 40pt; font-weight: 700; margin: 0; line-height: 1.15; }

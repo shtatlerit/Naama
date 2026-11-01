@@ -1,7 +1,7 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1615';
-import { computeLayout, pagesHTML } from './layout.js?v=20261101-1615';
-import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1615';
-import { vocalize } from './niqqud.js?v=20261101-1615';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1618';
+import { computeLayout, pagesHTML } from './layout.js?v=20261101-1618';
+import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1618';
+import { vocalize } from './niqqud.js?v=20261101-1618';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -35,7 +35,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261101-1615'),
+    import('./firebase-config.js?v=20261101-1618'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
@@ -79,6 +79,19 @@ let cur = null;           // current song
 let view = { kind: 'choir', print: 'text', layoutPick: 'one', voicing: false };
 let lastLayout = null;
 let lastChosen = null;
+const APP_VERSION = '20261101-1618'; // set by tools/stamp.py
+// Self-update: phones keep the old page for up to ~10 minutes. On every open (and when the app comes back
+// to the screen) ask the server for the current version without cache; if it is newer, reload onto it.
+async function checkUpdate() {
+  if (APP_VERSION === 'dev' || location.search.includes('dev')) return;
+  try {
+    const r = await fetch('version.txt?t=' + Date.now(), { cache: 'no-store' });
+    const v = (await r.text()).trim();
+    if (r.ok && v && v !== APP_VERSION && /^\d{8}-\d{4}$/.test(v) && !location.search.includes('v=' + v)) location.replace(location.pathname + '?v=' + v + location.hash);
+  } catch {}
+}
+checkUpdate();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 const NAAMA_WA = '972509066939'; // נעמה, 050-9066939 (from the logo page)
 let sortBy = 'title';
 

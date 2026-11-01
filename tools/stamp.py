@@ -12,4 +12,8 @@ for f in files:
     n = ref.sub(lambda m: m.group(1) + '?v=' + ver, s)
     n = re.sub(r'(<span [^>]*id="ver">)[^<]*(</span>)', r'\g<1>גרסה ' + ver + r'\2', n)
     if n != s: f.write_text(n, encoding='utf-8')
+app = root / 'js' / 'app.js'
+a = app.read_text(encoding='utf-8')
+app.write_text(re.sub(r"const APP_VERSION = '[^']*';", f"const APP_VERSION = '{ver}';", a), encoding='utf-8')
+(root / 'version.txt').write_text(ver + '\n', encoding='utf-8')
 print('version', ver)

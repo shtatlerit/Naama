@@ -26,6 +26,24 @@
 .page .chords { white-space: pre; overflow: hidden; text-align: center; font-size: calc(var(--fs) * 0.72); font-weight: 700; color: var(--teal); line-height: 1.1; }
 .page .voice { font-size: 0.62em; font-weight: 400; color: var(--slate); }
 .page .qr { position: absolute; left: 14mm; bottom: 19mm; width: 20mm; height: 20mm; }
+.page .sh.compact { margin-bottom: 3mm; }
+.page .sh.compact h1 { font-size: 22pt; }
+.page .sh.compact .perf { font-size: 12pt; }
+.page .sh.compact .cred { font-size: 9pt; }
+/* songbook */
+.page .pgno { position: absolute; right: 14mm; bottom: 9.5mm; font-size: 10pt; color: var(--slate); }
+.page .split { position: absolute; left: 30mm; right: 30mm; height: 0; border-top: 0.35mm solid #C9A57C; }
+.page .cover { position: absolute; left: 14mm; right: 14mm; top: 46mm; text-align: center; }
+.page .cover h1 { font-size: 40pt; font-weight: 700; margin: 0; line-height: 1.15; }
+.page .cover .sub { font-size: 16pt; color: var(--slate); margin-top: 3mm; }
+.page .cover .date { font-size: 14pt; color: var(--slate); margin-top: 4mm; }
+.page .toc h2 { font-size: 26pt; text-align: center; margin: 0 0 8mm; color: var(--navy); }
+.page .toc ol { list-style: none; margin: 0; padding: 0 6mm; }
+.page .toc li { display: flex; align-items: baseline; gap: 2mm; font-size: var(--tfs, 15pt); line-height: 1.6; }
+.page .toc .tt { font-weight: 700; white-space: nowrap; }
+.page .toc .tp { color: var(--slate); font-size: 0.75em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page .toc .dots { flex: 1; border-bottom: 0.3mm dotted #B9C0CC; transform: translateY(-1mm); min-width: 6mm; }
+.page .toc .tn { font-weight: 700; min-width: 8mm; text-align: left; }
 .page .qr svg, .page .qr img { width: 100%; height: 100%; display: block; }
 
 /* measuring stage */

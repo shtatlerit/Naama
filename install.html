@@ -6,7 +6,7 @@
 <title>הכפתור לשירונט</title>
 <link rel="icon" href="img/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261101-1642">
+<link rel="stylesheet" href="css/app.css?v=20261101-2001">
 <style>
   ol { padding-inline-start: 22px; line-height: 1.7; margin: 0; }
   .bm { display: inline-block; background: var(--navy); color: #fff; padding: 12px 20px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 18px; cursor: grab; }
@@ -38,7 +38,7 @@
   </div>
 </div>
 <script type="module">
-  import { grab } from './js/grab.js?v=20261101-1642';
+  import { grab } from './js/grab.js?v=20261101-2001';
   const href = 'javascript:' + encodeURIComponent('(' + grab.toString().replace(/\s+/g, ' ') + ')()');
   document.getElementById('bm').href = href;
   document.getElementById('bm').onclick = (e) => { e.preventDefault(); alert('צריך לגרור את הכפתור לסרגל הסימניות, לא ללחוץ עליו כאן'); };

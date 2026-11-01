@@ -33,5 +33,22 @@ with sync_playwright() as pw:
         ok(r['fill'] > 0.6 or r['air'] >= 1, f"{name}: uses the page height (fill {r['fill']:.2f}, air {r['air']})")
     r = load(songs['short'])
     ok(len(r['cols']) == 1, 'short song uses one column')
+    # songbook: cover, table of contents, numbered pages, chosen order
+    for i, k in enumerate(['short', 'birds', 'refs']):
+        load(songs[k].replace('שיר לבדיקה', 'שיר ' + str(i + 1)) if k != 'refs' else songs[k]); pg.wait_for_timeout(900)  # let it save
+    pg.click('#btn-back'); pg.click('#btn-book'); pg.wait_for_timeout(400)
+    pg.fill('#bk-date', '2026-12-06'); pg.dispatch_event('#bk-date', 'change')
+    for i in range(len(pg.query_selector_all('#bk-pick [data-add]'))): pg.click(f'#bk-pick li:nth-child({i+1}) [data-add]')
+    ok('כ״ו בכסלו תשפ״ז' in pg.inner_text('#bk-date-he'), 'songbook: Hebrew date in letters')
+    pg.click('#bk-build'); pg.wait_for_selector('#bk-status:has-text("מוכן")', timeout=120000)
+    info = pg.evaluate("""() => { const p = [...document.querySelectorAll('#bk-preview .page')];
+      return { n: p.length, cover: !!p[0].querySelector('.cover'), toc: !!p[1].querySelector('.toc'),
+               nums: p.slice(2).map(x => x.querySelector('.pgno')?.textContent),
+               tocNums: [...p[1].querySelectorAll('.tn')].map(x => x.textContent),
+               over: p.some(x => [...x.querySelectorAll('.content')].some(c => c.scrollHeight > c.clientHeight + 1)) } }""")
+    ok(info['cover'] and info['toc'], 'songbook: cover and table of contents')
+    ok(info['nums'] == [str(i + 1) for i in range(len(info['nums']))], f"songbook: song pages numbered from 1 {info['nums']}")
+    ok(all(t in info['nums'] for t in info['tocNums']), f"songbook: contents point to real pages {info['tocNums']}")
+    ok(not info['over'], 'songbook: nothing overflows a page')
     b.close()
 print(f'\n{fail} FAILED' if fail else '\nall layout tests passed'); raise SystemExit(1 if fail else 0)

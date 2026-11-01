@@ -12,8 +12,8 @@
 <meta name="apple-mobile-web-app-title" content="נעמה">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20261101-1642">
-<link rel="stylesheet" href="css/page.css?v=20261101-1642">
+<link rel="stylesheet" href="css/app.css?v=20261101-2001">
+<link rel="stylesheet" href="css/page.css?v=20261101-2001">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
 </head>
 <body>
@@ -70,8 +70,8 @@
 
     <div class="foot-links">
       <a href="install.html">התקנת הכפתור "עצב לנעמה" לשירונט</a>
-      <span class="soon">בונה שירון – בקרוב</span>
-      <span class="soon" id="ver">גרסה 20261101-1642</span>
+      <button id="btn-book" class="btn ghost small">📖 בונה שירון</button>
+      <span class="soon" id="ver">גרסה 20261101-2001</span>
     </div>
   </section>
 
@@ -152,11 +152,70 @@
     <div id="preview" class="preview"></div>
   </section>
 
+  <!-- Songbook -->
+  <section id="v-book" class="view" hidden>
+    <header class="topbar">
+      <button id="book-back" class="btn link">→ חזרה</button>
+      <div class="greet">בונה שירון</div>
+      <span id="book-save" class="save-state"></span>
+    </header>
+
+    <div class="card">
+      <div class="row between"><h2>השירונים שלי</h2><button id="book-new" class="btn ghost small">+ שירון חדש</button></div>
+      <ul id="book-list" class="rep"></ul>
+      <p id="book-list-empty" class="hint">עוד אין שירונים שמורים.</p>
+    </div>
+
+    <div class="card">
+      <label class="small-label" for="bk-title">כותרת השירון (על השער)</label>
+      <input id="bk-title" placeholder="למשל: ערב שירה לחנוכה">
+      <label class="small-label" for="bk-date">תאריך האירוע</label>
+      <input id="bk-date" type="date">
+      <div id="bk-date-he" class="hint"></div>
+      <div class="row gap wrap">
+        <div class="seg" role="group" aria-label="גרסה">
+          <button class="seg-b on" data-bkver="choir">מקהלה</button>
+          <button class="seg-b" data-bkver="chords">אקורדים</button>
+        </div>
+        <label class="chk" id="bk-copies-wrap" hidden>עותקים <input id="bk-copies" type="number" min="1" max="20" value="1" style="width:5em"></label>
+        <div class="seg" role="group" aria-label="סוג הדפסה">
+          <button class="seg-b on" data-bkprint="full">דף מלא</button>
+          <button class="seg-b" data-bkprint="text">רק טקסט</button>
+        </div>
+      </div>
+      <div class="row gap wrap">
+        <label class="chk"><input type="checkbox" id="bk-toc" checked> תוכן עניינים</label>
+        <label class="chk"><input type="checkbox" id="bk-pair" checked> שני שירים קצרים בעמוד</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>השירים בשירון, לפי הסדר</h2>
+      <ol id="bk-chosen" class="bk-chosen"></ol>
+      <p id="bk-chosen-empty" class="hint">עוד לא נבחרו שירים. בחרי מהרשימה למטה.</p>
+      <h2>הוספה מהרפרטואר</h2>
+      <input id="bk-q" placeholder="חיפוש שיר ברפרטואר">
+      <ul id="bk-pick" class="rep"></ul>
+    </div>
+
+    <div class="card">
+      <button id="bk-build" class="btn primary big">הכנת השירון</button>
+      <div class="row gap wrap">
+        <button id="bk-print" class="btn ghost" disabled>הדפסה</button>
+        <button id="bk-pdf" class="btn ghost" disabled>שמירה כ-PDF</button>
+        <button id="bk-wa" class="btn ghost" disabled>שליחה לנעמה בוואטסאפ</button>
+      </div>
+      <p id="bk-status" class="hint"></p>
+    </div>
+
+    <div id="bk-preview" class="preview"></div>
+  </section>
+
   <div id="voice-menu" class="voice-menu" hidden></div>
   <div id="toast" class="toast" hidden></div>
 </div>
 
 <div id="print-root"></div>
-<script type="module" src="js/app.js?v=20261101-1642"></script>
+<script type="module" src="js/app.js?v=20261101-2001"></script>
 </body>
 </html>

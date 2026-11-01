@@ -1,7 +1,8 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261101-1642';
-import { computeLayout, pagesHTML } from './layout.js?v=20261101-1642';
-import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1642';
-import { vocalize } from './niqqud.js?v=20261101-1642';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261101-2001';
+import { computeLayout, pagesHTML } from './layout.js?v=20261101-2001';
+import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-2001';
+import { buildBook, bookDates } from './songbook.js?v=20261101-2001';
+import { vocalize } from './niqqud.js?v=20261101-2001';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -20,6 +21,7 @@ async function initStore() {
   if (DEV) {
     const mem = JSON.parse(sessionStorage.getItem('dev-songs') || '{}');
     const persist = () => sessionStorage.setItem('dev-songs', JSON.stringify(mem));
+    const books = JSON.parse(sessionStorage.getItem('dev-books') || '{}');
     store = {
       onUser(cb) { cb({ email: NAAMA_EMAIL, displayName: 'נעמה' }); },
       login() {}, logout() {},
@@ -27,6 +29,9 @@ async function initStore() {
       async save(s) { s.id = s.id || 'dev' + Date.now(); mem[s.id] = JSON.parse(JSON.stringify(s)); persist(); return s.id; },
       async remove(id) { delete mem[id]; persist(); },
       async getSettings() { return {}; }, async saveSettings() {},
+      async listBooks() { return Object.values(books); },
+      async saveBook(b) { b.id = b.id || 'devbook' + Date.now(); books[b.id] = JSON.parse(JSON.stringify(b)); sessionStorage.setItem('dev-books', JSON.stringify(books)); return b.id; },
+      async removeBook(id) { delete books[id]; sessionStorage.setItem('dev-books', JSON.stringify(books)); },
     };
     return;
   }
@@ -35,7 +40,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261101-1642'),
+    import('./firebase-config.js?v=20261101-2001'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
@@ -64,6 +69,13 @@ async function initStore() {
     async remove(id) { await F.deleteDoc(F.doc(db, 'songs', id)); },
     async getSettings() { const d = await F.getDoc(F.doc(db, 'settings', 'app')); return d.exists() ? d.data() : {}; },
     async saveSettings(v) { await F.setDoc(F.doc(db, 'settings', 'app'), v, { merge: true }); },
+    async listBooks() { const snap = await F.getDocs(F.collection(db, 'songbooks')); return snap.docs.map((d) => ({ ...d.data(), id: d.id })); },
+    async saveBook(b) {
+      const id = b.id || 'b' + Date.now().toString(36);
+      const data = JSON.parse(JSON.stringify({ ...b, id })); data.updatedAt = F.serverTimestamp(); data.updatedBy = user?.email || '';
+      await F.setDoc(F.doc(db, 'songbooks', id), data); return id;
+    },
+    async removeBook(id) { await F.deleteDoc(F.doc(db, 'songbooks', id)); },
   };
 }
 function showLoginError(e) {
@@ -79,7 +91,7 @@ let cur = null;           // current song
 let view = { kind: 'choir', print: 'text', layoutPick: 'one', voicing: false };
 let lastLayout = null;
 let lastChosen = null;
-const APP_VERSION = '20261101-1642'; // set by tools/stamp.py
+const APP_VERSION = '20261101-2001'; // set by tools/stamp.py
 // Self-update: phones keep the old page for up to ~10 minutes. On every open (and when the app comes back
 // to the screen) ask the server for the current version without cache; if it is newer, reload onto it.
 async function checkUpdate() {
@@ -174,10 +186,10 @@ function refresh() {
   scalePreview();
   $('#print-root').innerHTML = pagesHTML(chosen);
 }
-function scalePreview() {
-  const pv = $('#preview');
+function scalePreview(sel = '#preview') {
+  const pv = $(sel);
   const w = Math.min(pv.clientWidth, 820);
-  $$('.pv-wrap').forEach((wrap) => {
+  pv.querySelectorAll('.pv-wrap').forEach((wrap) => {
     const page = wrap.querySelector('.page');
     const pw = page.offsetWidth, ph = page.offsetHeight;
     const sc = Math.min(1, w / pw);
@@ -185,7 +197,7 @@ function scalePreview() {
     wrap.style.width = pw * sc + 'px'; wrap.style.height = ph * sc + 'px';
   });
 }
-addEventListener('resize', () => { if (!$('#v-song').hidden) scalePreview(); });
+addEventListener('resize', () => { if (!$('#v-song').hidden) scalePreview(); if (!$('#v-book').hidden) scalePreview('#bk-preview'); });
 
 let saveTimer;
 function scheduleSave() {
@@ -305,6 +317,7 @@ function wire() {
   $$('[data-sort]').forEach((b) => (b.onclick = () => { sortBy = b.dataset.sort; setSeg('[data-sort]', sortBy); renderHome(); }));
 
   $('#btn-back').onclick = () => { show('v-home'); renderHome(); };
+  wireBook();
   $$('[data-kind]').forEach((b) => (b.onclick = () => { if (b.disabled) return; view.kind = b.dataset.kind; setSeg('[data-kind]', view.kind); refresh(); }));
   $$('[data-print]').forEach((b) => (b.onclick = () => { view.print = b.dataset.print; setSeg('[data-print]', view.print); refresh(); }));
   $('#opt-niqqud').onchange = (e) => { cur.opts.noNiqqud = e.target.checked; refresh(); scheduleSave(); };
@@ -392,3 +405,110 @@ async function boot() {
   });
 }
 boot();
+
+/* ---------------- songbook ---------------- */
+let books = [], book = null, bookHtml = '', bookTimer;
+const newBook = () => ({ title: '', date: '', songIds: [], toc: true, pair: true, version: 'choir', full: true, copies: 1 });
+async function openBooks() {
+  show('v-book');
+  try { books = await store.listBooks(); } catch { books = []; toast('לא הצלחתי לטעון את השירונים'); }
+  books.sort((a, b) => String(b.updatedAt?.seconds || b.id).localeCompare(String(a.updatedAt?.seconds || a.id)));
+  if (!book) book = books[0] ? books[0] : newBook();
+  renderBook();
+}
+function bookChanged() {
+  bookHtml = ''; ['#bk-print', '#bk-pdf', '#bk-wa'].forEach((b) => ($(b).disabled = true));
+  $('#bk-preview').innerHTML = ''; $('#bk-status').textContent = '';
+  $('#book-save').textContent = 'שומרת…';
+  clearTimeout(bookTimer);
+  bookTimer = setTimeout(async () => {
+    try {
+      book.id = await store.saveBook(book);
+      const i = books.findIndex((b) => b.id === book.id); if (i >= 0) books[i] = book; else books.unshift(book);
+      $('#book-save').textContent = 'נשמר'; renderBookList();
+    } catch (e) { $('#book-save').textContent = 'לא נשמר'; }
+  }, 700);
+}
+function renderBookList() {
+  $('#book-list').innerHTML = books.map((b) => `<li data-row="${esc(b.id)}"><button data-book="${esc(b.id)}"><span class="t">${esc(b.title || 'שירון בלי שם')}${b.id === book?.id ? ' ✓' : ''}</span><span class="p">${(b.songIds || []).length} שירים${b.date ? ' · ' + esc(bookDates(b.date)?.hebrew || '') : ''}</span></button><button class="del" data-bdel="${esc(b.id)}" aria-label="מחיקת השירון" title="מחיקה">🗑</button><span class="del-ask" hidden>למחוק את השירון? <button class="yes" data-bdel-yes="${esc(b.id)}">כן, למחוק</button> <button class="no" data-bdel-no>ביטול</button></span></li>`).join('');
+  $('#book-list-empty').hidden = books.length > 0;
+}
+function renderBook() {
+  renderBookList();
+  $('#bk-title').value = book.title || '';
+  $('#bk-date').value = book.date || '';
+  const d = bookDates(book.date);
+  $('#bk-date-he').textContent = d ? d.hebrew + '  ·  ' + d.greg : 'התאריך העברי והלועזי יחושבו לבד.';
+  setSeg('[data-bkver]', book.version); setSeg('[data-bkprint]', book.full ? 'full' : 'text');
+  $('#bk-copies-wrap').hidden = book.version !== 'chords'; $('#bk-copies').value = book.copies || 1;
+  $('#bk-toc').checked = book.toc !== false; $('#bk-pair').checked = book.pair !== false;
+  const byId = new Map(songs.map((x) => [x.id, x]));
+  const chosen = (book.songIds || []).filter((id) => byId.has(id));
+  $('#bk-chosen').innerHTML = chosen.map((id, i) => { const x = byId.get(id); return `<li><span class="t">${esc(x.title)} <span>${esc(x.performer || '')}</span></span>
+    <button data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="למעלה">▲</button><button data-down="${i}" ${i === chosen.length - 1 ? 'disabled' : ''} aria-label="למטה">▼</button><button data-out="${i}" aria-label="הוצאה מהשירון">✕</button></li>`; }).join('');
+  $('#bk-chosen-empty').hidden = chosen.length > 0;
+  const q = $('#bk-q').value.trim();
+  const pick = [...songs].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'he')).filter((x) => !q || (x.title + ' ' + (x.performer || '')).includes(q));
+  $('#bk-pick').innerHTML = pick.map((x) => `<li><button data-add="${esc(x.id)}"><span class="t">${esc(x.title)}</span><span class="p">${chosen.includes(x.id) ? '<span class="in">✓ בשירון</span>' : esc(x.performer || '')}</span></button></li>`).join('');
+}
+function wireBook() {
+  $('#btn-book').onclick = openBooks;
+  $('#book-back').onclick = () => { show('v-home'); renderHome(); };
+  $('#book-new').onclick = () => { book = newBook(); renderBook(); bookChanged(); };
+  $('#book-list').onclick = async (e) => {
+    const row = e.target.closest('li[data-row]');
+    if (e.target.closest('[data-bdel]')) { row.querySelector('.del-ask').hidden = false; return; }
+    if (e.target.closest('[data-bdel-no]')) { row.querySelector('.del-ask').hidden = true; return; }
+    const y = e.target.closest('[data-bdel-yes]');
+    if (y) { const id = y.dataset.bdelYes; try { await store.removeBook(id); books = books.filter((b) => b.id !== id); if (book?.id === id) book = books[0] || newBook(); renderBook(); toast('השירון נמחק'); } catch { toast('המחיקה לא הצליחה'); } return; }
+    const b = e.target.closest('[data-book]'); if (b) { book = books.find((x) => x.id === b.dataset.book); bookChanged(); renderBook(); }
+  };
+  $('#bk-title').oninput = () => { book.title = $('#bk-title').value; bookChanged(); renderBookList(); };
+  $('#bk-date').onchange = () => { book.date = $('#bk-date').value; bookChanged(); renderBook(); };
+  $$('[data-bkver]').forEach((b) => (b.onclick = () => { book.version = b.dataset.bkver; bookChanged(); renderBook(); }));
+  $$('[data-bkprint]').forEach((b) => (b.onclick = () => { book.full = b.dataset.bkprint === 'full'; bookChanged(); renderBook(); }));
+  $('#bk-copies').onchange = () => { book.copies = Math.max(1, Math.min(20, +$('#bk-copies').value || 1)); bookChanged(); };
+  $('#bk-toc').onchange = () => { book.toc = $('#bk-toc').checked; bookChanged(); };
+  $('#bk-pair').onchange = () => { book.pair = $('#bk-pair').checked; bookChanged(); };
+  $('#bk-q').oninput = renderBook;
+  $('#bk-pick').onclick = (e) => {
+    const b = e.target.closest('[data-add]'); if (!b) return;
+    const id = b.dataset.add; book.songIds = book.songIds || [];
+    if (book.songIds.includes(id)) book.songIds = book.songIds.filter((x) => x !== id); else book.songIds.push(id);
+    bookChanged(); renderBook();
+  };
+  $('#bk-chosen').onclick = (e) => {
+    const ids = book.songIds.filter((id) => songs.some((x) => x.id === id));
+    const b = e.target.closest('button'); if (!b) return;
+    const i = +(b.dataset.up ?? b.dataset.down ?? b.dataset.out);
+    if (b.dataset.up != null && i > 0) [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
+    else if (b.dataset.down != null && i < ids.length - 1) [ids[i + 1], ids[i]] = [ids[i], ids[i + 1]];
+    else if (b.dataset.out != null) ids.splice(i, 1);
+    book.songIds = ids; bookChanged(); renderBook();
+  };
+  $('#bk-build').onclick = async (e) => {
+    if (!(book.songIds || []).length) { toast('בחרי קודם שירים לשירון'); return; }
+    const btn = e.currentTarget; btn.disabled = true;
+    try {
+      const r = await buildBook(book, songs, (i, n) => { btn.textContent = `מכינה… ${i}/${n}`; });
+      bookHtml = r.html;
+      const pv = $('#bk-preview');
+      pv.classList.toggle('text-only', !book.full);
+      pv.innerHTML = r.html.split('</section>').filter((x) => x.trim()).map((h) => `<div class="pv-wrap">${h}</section></div>`).join('');
+      scalePreview('#bk-preview');
+      $('#bk-status').textContent = `השירון מוכן: ${r.pageCount} עמודים.` + (r.skipped.length ? ` לא נכנסו (ארוכים מדי): ${r.skipped.join(', ')}` : '');
+      ['#bk-print', '#bk-pdf', '#bk-wa'].forEach((b) => ($(b).disabled = false));
+      pv.scrollIntoView({ behavior: 'smooth' });
+    } catch (err) { console.error(err); toast('הכנת השירון לא הצליחה'); }
+    finally { btn.disabled = false; btn.textContent = 'הכנת השירון'; }
+  };
+  const name = () => 'שירון' + (book.title ? ' - ' + book.title : '') + (book.version === 'chords' ? ' - אקורדים' : '');
+  $('#bk-print').onclick = () => { $('#print-root').innerHTML = bookHtml; setTimeout(() => window.print(), 80); };
+  const busyB = async (btn, label, fn) => { const t = btn.textContent; btn.disabled = true; btn.textContent = label; try { await fn(); } catch (err) { console.error(err); toast('השמירה לא הצליחה. נסי שוב.'); } finally { btn.disabled = false; btn.textContent = t; } };
+  $('#bk-pdf').onclick = (e) => busyB(e.currentTarget, 'מכינה PDF…', () => savePdf(bookHtml, book.full, name()));
+  $('#bk-wa').onclick = (e) => busyB(e.currentTarget, 'מכינה PDF…', async () => {
+    const r = await sharePdf(bookHtml, book.full, name(), book.title || 'שירון');
+    if (r === 'again') toast('ה-PDF מוכן. לחצי שוב על "שליחה לנעמה בוואטסאפ".', 6000);
+    if (r === 'unsupported') { toast('ה-PDF ירד. בוואטסאפ שנפתח, צרפי אותו (📎).', 7000); window.open('https://wa.me/' + NAAMA_WA + '?text=' + encodeURIComponent(book.title || 'שירון'), '_blank', 'noopener'); }
+  });
+}

@@ -1,6 +1,6 @@
 // Renders a song onto A4 logo pages and finds the largest font that fits.
 // Page geometry (mm) matches the printed logo page: text area from 46mm top, 10mm sides, 16mm bottom.
-import { transposeChords, stripNiqqud } from './parse.js?v=20261101-1642';
+import { transposeChords, stripNiqqud } from './parse.js?v=20261101-2001';
 
 export const GEOM = { top: 46, side: 10, bottom: 16, qr: 24 };
 const MIN_FONT = 12, MAX_FONT = 30;
@@ -44,7 +44,7 @@ function stanzaHTML(s, opts) {
 }
 
 function headHTML(song, opts) {
-  return `<header class="sh">
+  return `<header class="sh${opts.compactHead ? ' compact' : ''}">
     <h1>${esc(opts.noNiqqud ? stripNiqqud(song.title) : song.title) || 'שיר'}</h1>
     ${song.performer ? `<div class="perf">${esc(song.performer)}</div>` : ''}
     ${(song.credits || []).length ? `<div class="cred">${creditsLine(song)}</div>` : ''}
@@ -53,10 +53,12 @@ function headHTML(song, opts) {
 
 function pageShell(inner, opts, pageNo) {
   const qr = opts.qrSvg && pageNo === 0 ? `<div class="qr">${opts.qrSvg}</div>` : '';
-  const bottom = GEOM.bottom + (opts.qrSvg ? GEOM.qr : 0);
+  // opts.box = {top, bottom} in mm: lay the song out in part of the page (songbook: two songs on a page)
+  const top = opts.box ? opts.box.top : GEOM.top;
+  const bottom = opts.box ? opts.box.bottom : GEOM.bottom + (opts.qrSvg ? GEOM.qr : 0);
   return `<section class="page${opts.full ? ' full' : ''}">
     <img class="bg" src="img/page-full.jpg" alt="">
-    <div class="content" style="top:${GEOM.top}mm;left:${GEOM.side}mm;right:${GEOM.side}mm;bottom:${bottom}mm">${inner}</div>
+    <div class="content" style="top:${top}mm;left:${GEOM.side}mm;right:${GEOM.side}mm;bottom:${bottom}mm">${inner}</div>
     ${qr}
   </section>`;
 }

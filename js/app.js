@@ -1,7 +1,7 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1614';
-import { computeLayout, pagesHTML } from './layout.js?v=20261101-1614';
-import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1614';
-import { vocalize } from './niqqud.js?v=20261101-1614';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1615';
+import { computeLayout, pagesHTML } from './layout.js?v=20261101-1615';
+import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1615';
+import { vocalize } from './niqqud.js?v=20261101-1615';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -35,7 +35,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261101-1614'),
+    import('./firebase-config.js?v=20261101-1615'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);

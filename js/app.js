@@ -1,7 +1,7 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1109';
-import { computeLayout, pagesHTML } from './layout.js?v=20261101-1109';
-import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1109';
-import { vocalize } from './niqqud.js?v=20261101-1109';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1614';
+import { computeLayout, pagesHTML } from './layout.js?v=20261101-1614';
+import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1614';
+import { vocalize } from './niqqud.js?v=20261101-1614';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -35,7 +35,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261101-1109'),
+    import('./firebase-config.js?v=20261101-1614'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
@@ -261,7 +261,11 @@ function wire() {
   $('#btn-shironet').onclick = () => {
     const q = $('#q').value.trim();
     if (!q) { $('#q').focus(); toast('כתבי או אמרי קודם את שם השיר'); return; }
-    window.open('https://shironet.mako.co.il/search?q=' + encodeURIComponent(q), '_blank', 'noopener');
+    const url = 'https://shironet.mako.co.il/search?q=' + encodeURIComponent(q);
+    // From the iPhone home-screen app, links open in a small in-app browser that has no bookmarks,
+    // so the "עצב לנעמה" button cannot be used there. x-safari-https:// opens the real Safari (iOS 17+).
+    if (navigator.standalone === true) location.href = 'x-safari-' + url;
+    else window.open(url, '_blank', 'noopener');
   };
   $('#btn-paste-toggle').onclick = () => { $('#paste-box').hidden = !$('#paste-box').hidden; if (!$('#paste-box').hidden) $('#paste').focus(); };
   $('#btn-paste-go').onclick = () => { const t = $('#paste').value; if (!t.trim()) return; handleImport({ text: t }); $('#paste').value = ''; $('#paste-box').hidden = true; };

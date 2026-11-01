@@ -14,6 +14,7 @@ ok(r.stanzas.filter((s) => s.type === 'ref').length === 2 && r.stanzas[1].type =
 ok(r.credits.length === 1 && r.credits[0].label === 'מילים ולחן', 'credits "מילים ולחן" read');
 const j = parseImport({ text: S.junk });
 ok(!JSON.stringify(j).includes('ביצועים נוספים'), 'Shironet leftovers removed');
+ok(!JSON.stringify(parseImport({ text: S.junkSingular })).includes('ביצוע נוסף'), 'Shironet leftover in singular removed (mshironet)');
 ok(j.stanzas.some((s) => s.type === 'note'), 'bracketed line becomes a note');
 ok(j.title === 'שיר' && j.performer === 'להקה', 'title and performer read');
 

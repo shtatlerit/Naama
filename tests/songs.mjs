@@ -30,3 +30,6 @@ export const junk = song('שיר\nלהקה\nקיימים 2 ביצועים נוס
 
 // Two short stanzas -> one column.
 export const short = song(HEAD, [v('בית א'), v('בית ב')]);
+
+// mobile Shironet (mshironet): singular "קיים ביצוע נוסף לשיר זה" must be removed too.
+export const junkSingular = song('שיר\nלהקה\nמילים: א\nלחן: ב\nקיים ביצוע נוסף לשיר זה', [v('בית א'), v('בית ב')]);

@@ -95,15 +95,26 @@ function layoutOne(song, stanzas, opts, withHead, pageNo) {
   const head = withHead ? headHTML(song, opts) : '';
   const cands = [{ split: null }];
   for (let k = 1; k < stanzas.length; k++) cands.push({ split: k });
-  let best = null;
-  for (const c of cands) {
+  // rough height of a group of stanzas, in lines (a stanza gap counts as one line)
+  const rows = (arr) => arr.reduce((n, s) => n + s.lines.length + (s.type === 'chorus' ? 1 : 0) + 1, 0);
+  const results = cands.map((c) => {
     const html = pageShell(head + columnsHTML(stanzas, c.split, opts), opts, pageNo);
     const f = bestFont(html);
-    // a single column wins ties; two columns must give a clearly bigger font
-    const score = c.split == null ? f + 0.75 : f;
-    if (!best || score > best.score) best = { ...c, font: f, html, score, st: stanzas, withHead, opts };
+    const imbalance = c.split == null ? 0 : Math.abs(rows(stanzas.slice(0, c.split)) - rows(stanzas.slice(c.split)));
+    return { ...c, font: f, html, st: stanzas, withHead, opts, imbalance };
+  });
+  // Among two-column options whose font is (almost) the best, take the most balanced columns.
+  // Often the widest line, not the height, limits the font, so many splits tie; a lopsided split looks wrong.
+  const twos = results.filter((r) => r.split != null && r.font);
+  let two = null;
+  if (twos.length) {
+    const top = Math.max(...twos.map((r) => r.font));
+    two = twos.filter((r) => r.font >= top - 0.5).sort((a, b) => a.imbalance - b.imbalance || b.font - a.font)[0];
   }
-  return best;
+  const one = results[0];
+  // a single column wins unless two columns give a clearly bigger font
+  if (one.font && (!two || one.font + 0.75 >= two.font)) return one;
+  return two || one;
 }
 
 // Public: compute layouts. Returns {pages:[{html,font}], options:[...] } with one-page and (if needed) two-page alternatives

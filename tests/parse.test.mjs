@@ -18,6 +18,14 @@ ok(!JSON.stringify(parseImport({ text: S.junkSingular })).includes('ביצוע �
 ok(j.stanzas.some((s) => s.type === 'note'), 'bracketed line becomes a note');
 ok(j.title === 'שיר' && j.performer === 'להקה', 'title and performer read');
 
+const tf = parseImport(S.titleFirst);
+ok(tf.title === 'כותרת השיר' && tf.performer === 'הזמרת', 'song that starts with its title: title and performer read (נרותי הזעירים) ' + tf.title + ' / ' + tf.performer);
+ok(tf.credits.length === 2, 'song that starts with its title: credits read');
+ok(tf.stanzas[0].lines[0].t === 'כותרת השיר', 'first lyric line equal to the title is kept');
+ok(!JSON.stringify(tf).includes('אמנים'), 'site menu does not get into the song');
+const old1 = parseImport(S.titleFirstOld);
+ok(old1.title === 'כותרת השיר' && old1.performer === 'הזמרת', 'older button: names taken from the tab title when the header is a menu ' + old1.title);
+
 // Songs saved before a rule changed are corrected when opened
 const old = parseImport({ text: S.birds }).stanzas; old.forEach((s) => (s.type = 'chorus'));
 ok(markChoruses(old)[0].type === 'verse', 'old saved songs are re-checked on open');

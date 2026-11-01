@@ -33,3 +33,16 @@ export const short = song(HEAD, [v('בית א'), v('בית ב')]);
 
 // mobile Shironet (mshironet): singular "קיים ביצוע נוסף לשיר זה" must be removed too.
 export const junkSingular = song('שיר\nלהקה\nמילים: א\nלחן: ב\nקיים ביצוע נוסף לשיר זה', [v('בית א'), v('בית ב')]);
+
+// "נרותי הזעירים" on mobile Shironet: the song starts with its own title, and a site menu stands above it.
+// The button must find the header right above the lyrics (not above the first place the title appears).
+const menu = 'הכל שירים מילים לשירים אמנים\nאקורדים';
+const startsWithTitle = ['כותרת השיר', 'שורה שנייה של הבית', 'שורה שלישית של הבית', 'שורה רביעית של הבית'];
+export const titleFirst = {
+  url: 'https://mshironet.mako.co.il/artist?type=lyrics&prfid=1&wrkid=2',
+  title: 'כותרת השיר - הזמרת - שירונט',
+  text: block(startsWithTitle) + '\n\n' + block(v('בית ב')),
+  body: menu + '\nכותרת השיר\nהזמרת\nמילים: משורר\nלחן: עממי\nקיים ביצוע נוסף לשיר זה\n\n' + block(startsWithTitle) + '\n\n' + block(v('בית ב')) + '\n\nתגובות',
+};
+// the same page through the older button (no "body", header cut at the menu)
+export const titleFirstOld = { ...titleFirst, body: undefined, head: menu };

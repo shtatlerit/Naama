@@ -1,7 +1,7 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses } from './parse.js?v=20261101-1618';
-import { computeLayout, pagesHTML } from './layout.js?v=20261101-1618';
-import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1618';
-import { vocalize } from './niqqud.js?v=20261101-1618';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261101-1642';
+import { computeLayout, pagesHTML } from './layout.js?v=20261101-1642';
+import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-1642';
+import { vocalize } from './niqqud.js?v=20261101-1642';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -35,7 +35,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261101-1618'),
+    import('./firebase-config.js?v=20261101-1642'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
@@ -79,7 +79,7 @@ let cur = null;           // current song
 let view = { kind: 'choir', print: 'text', layoutPick: 'one', voicing: false };
 let lastLayout = null;
 let lastChosen = null;
-const APP_VERSION = '20261101-1618'; // set by tools/stamp.py
+const APP_VERSION = '20261101-1642'; // set by tools/stamp.py
 // Self-update: phones keep the old page for up to ~10 minutes. On every open (and when the app comes back
 // to the screen) ask the server for the current version without cache; if it is newer, reload onto it.
 async function checkUpdate() {
@@ -213,7 +213,12 @@ function handleImport(data) {
   const s = song.source || {};
   const existing = s.wrkid ? songs.find((x) => x.source?.wrkid === s.wrkid && x.source?.prfid === s.prfid) : null;
   if (existing && s.type === 'chords') { openSong(mergeChords(existing, song)); toast('האקורדים נוספו לשיר'); scheduleSave(); return; }
-  if (existing) { openSong(existing); toast('השיר כבר ברפרטואר'); return; }
+  if (existing) {
+    // A newer import may read the header better (e.g. a fix in the title rules): refresh a wrong or missing header.
+    const better = song.title && (isJunk(existing.title || '') || (song.credits.length && (!existing.credits?.length || existing.title !== song.title)));
+    if (better) { existing.title = song.title; existing.performer = song.performer; if (song.credits.length) existing.credits = song.credits; scheduleSave(); }
+    openSong(existing); toast(better ? 'השיר כבר ברפרטואר – עדכנתי את השם והקרדיטים' : 'השיר כבר ברפרטואר'); return;
+  }
   song.createdAt = new Date().toISOString();
   openSong(song); scheduleSave();
 }

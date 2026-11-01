@@ -29,6 +29,6 @@ export function grab() {
   var first = text.trim().split('\n')[0].trim();
   var at = body.indexOf(first);
   var head = at > 0 ? body.slice(Math.max(0, at - 1500), at) : '';
-  var data = { v: 1, url: location.href, title: document.title, head: head, text: text };
+  var data = { v: 2, url: location.href, title: document.title, head: head, text: text, body: body.slice(0, 40000) };
   location.href = APP + '#import=' + encodeURIComponent(JSON.stringify(data));
 }

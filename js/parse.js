@@ -5,7 +5,7 @@
 const JUNK = [
   /קיימ(?:ים|ת|ות)?\s+(?:\d+\s+)?ביצוע(?:ים)?\s+נוספ/, /^קיים ביצוע/, /^מילות השיר$/, /^אקורדים$/, /^chords$/i, /^lyrics$/i,
   /דווח על טעות/, /^\d+\s*תגובות?$/, /^תגובות$/, /הוסף תגובה/, /^עמוד הבית/, /^>/,
-  /^שירונט$/, /^הדפס/, /^שלח לחבר/, /^שתף/, /^ראשי$/, /^אמנים$/, /^שירים$/, /^ביוגרפיה$/, /^תמונות$/,
+  /^שירונט$/, /^(?:הכל|שירים|אמנים|מילים לשירים|אקורדים|דף הבית|חיפוש)(?:\s+(?:הכל|שירים|אמנים|מילים לשירים|אקורדים|דף הבית|חיפוש))+$/, /^הדפס/, /^שלח לחבר/, /^שתף/, /^ראשי$/, /^אמנים$/, /^שירים$/, /^ביוגרפיה$/, /^תמונות$/,
 ];
 const CREDIT = /^(מילים ולחן|מילים ולחן ועיבוד|מילים|לחן|עיבוד|תרגום|נוסח עברי|לחן עממי)\s*[:：]\s*(.+)$/;
 const CHORD_TOKEN = /^[A-H](#|b)?(m|maj|min|dim|aug|sus|add|M)?\d*(sus\d*|add\d*|maj\d*|b\d+|#\d+)*(\/[A-H](#|b)?)?$/;
@@ -37,14 +37,23 @@ function parseHead(headLines, docTitle) {
     const m = l.match(CREDIT);
     if (m) { credits.push({ label: m[1], value: m[2].trim() }); if (firstCredit < 0) firstCredit = i; }
   });
-  const before = firstCredit >= 0 ? lines.slice(0, firstCredit) : lines;
   let title = '', performer = '';
-  if (before.length >= 2) { title = before[before.length - 2]; performer = before[before.length - 1]; }
-  else if (before.length === 1) { title = before[0]; }
+  if (firstCredit >= 0) {
+    // the song's title and performer are the two lines right above the credits
+    const before = lines.slice(0, firstCredit);
+    if (before.length >= 2) { title = before[before.length - 2]; performer = before[before.length - 1]; }
+    else if (before.length === 1) { title = before[0]; }
+  }
   if (!title && docTitle) {
-    // Shironet tab titles look like "<song> - <artist> - שירונט" or "מילות השיר <song> - <artist>"
-    const parts = docTitle.replace(/^(מילות השיר|אקורדים לשיר)\s*/, '').split(/\s+[-–|]\s+/);
-    title = parts[0] || ''; performer = performer || parts[1] || '';
+    // No credits found means the text above the lyrics is not the song header (e.g. a site menu):
+    // take the names from the tab title, e.g. "<song> - <artist> - שירונט" or "מילות השיר <song> - <artist>"
+    const parts = docTitle.replace(/^(מילות השיר|אקורדים לשיר|אקורדים)\s*/, '').split(/\s+[-–|]\s+/)
+      .map((x) => x.trim()).filter((x) => x && !/שירונט|mako|מילים לשיר|^אקורדים/.test(x));
+    title = parts[0] || ''; performer = parts[1] || '';
+  }
+  if (!title && lines.length) {
+    // last resort (pasted text without credits): first lines
+    title = lines[0]; performer = lines[1] || '';
   }
   return { title, performer, credits };
 }
@@ -124,10 +133,23 @@ export function parseImport(data) {
   // data: {text, head?, title?, url?}  (from the bookmarklet) or {text} from a paste
   const src = sourceFromUrl(data.url || '');
   let text = (data.text || '').replace(/\r/g, '').replace(/ /g, ' ');
-  let headLines = (data.head || '').replace(/\r/g, '').split('\n');
+  let headText = data.head || '';
+  if (data.body && text.trim()) {
+    // Newer button sends the whole page text: the header is what stands right above the lyrics block.
+    // Match several lyric lines, since a song often starts with its own title.
+    const body = data.body.replace(/\r/g, '').replace(/\u00a0/g, ' ');
+    const first = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    let at = -1;
+    for (let n = Math.min(3, first.length); n >= 1 && at < 0; n--) {
+      const re = new RegExp(first.slice(0, n).map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*\\n\\s*'));
+      const m = re.exec(body); if (m) at = m.index;
+    }
+    if (at > 0) headText = body.slice(Math.max(0, at - 1500), at);
+  }
+  let headLines = headText.replace(/\r/g, '').split('\n');
   let bodyLines = text.split('\n');
 
-  if (!data.head) {
+  if (!headText) {
     // pasted text: header = lines up to and including the credits block (stop at first blank line after any credit or after 4 lines)
     const lines = bodyLines;
     let i = 0, seenCredit = false, headEnd = -1;
@@ -148,7 +170,9 @@ export function parseImport(data) {
   const head = parseHead(headLines, data.title || '');
   bodyLines = bodyLines.map((l) => stripMdLinks(l)).filter((l) => !CREDIT.test(l.trim()));
   // drop leading lines that repeat the title/performer (some pages repeat them inside the lyrics box)
-  while (bodyLines.length && (!bodyLines[0].trim() || [head.title, head.performer].includes(bodyLines[0].trim()))) bodyLines.shift();
+  // (only as a pair: a song that simply starts with its own title keeps that line)
+  while (bodyLines.length && !bodyLines[0].trim()) bodyLines.shift();
+  if (head.performer && bodyLines.length > 1 && bodyLines[0].trim() === head.title && bodyLines[1].trim() === head.performer) bodyLines.splice(0, 2);
 
   const stanzas = classify(toStanzas(bodyLines));
   const hasChords = stanzas.some((s) => s.lines.some((l) => l.chords));

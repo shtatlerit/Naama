@@ -1,7 +1,7 @@
 // Songbook: a cover (logo page with a stronger watermark), a table of contents and the chosen songs,
 // in the order Naama sets, with page numbers. Two short songs may share a page.
-import { computeLayout } from './layout.js?v=20261101-2004';
-import { markChoruses } from './parse.js?v=20261101-2004';
+import { computeLayout } from './layout.js?v=20261109-1647';
+import { markChoruses } from './parse.js?v=20261109-1647';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 

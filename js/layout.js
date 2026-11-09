@@ -1,6 +1,6 @@
 // Renders a song onto A4 logo pages and finds the largest font that fits.
 // Page geometry (mm) matches the printed logo page: text area from 46mm top, 10mm sides, 16mm bottom.
-import { transposeChords, stripNiqqud } from './parse.js?v=20261101-2004';
+import { transposeChords, stripNiqqud } from './parse.js?v=20261109-1647';
 
 export const GEOM = { top: 46, side: 10, bottom: 16, qr: 24 };
 const MIN_FONT = 12, MAX_FONT = 30;

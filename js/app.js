@@ -1,8 +1,8 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261101-2004';
-import { computeLayout, pagesHTML } from './layout.js?v=20261101-2004';
-import { savePdf, saveWord, sharePdf } from './export.js?v=20261101-2004';
-import { buildBook, bookDates } from './songbook.js?v=20261101-2004';
-import { vocalize } from './niqqud.js?v=20261101-2004';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261109-1647';
+import { computeLayout, pagesHTML } from './layout.js?v=20261109-1647';
+import { savePdf, saveWord, sharePdf } from './export.js?v=20261109-1647';
+import { buildBook, bookDates } from './songbook.js?v=20261109-1647';
+import { vocalize } from './niqqud.js?v=20261109-1647';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -40,7 +40,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261101-2004'),
+    import('./firebase-config.js?v=20261109-1647'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
@@ -91,7 +91,7 @@ let cur = null;           // current song
 let view = { kind: 'choir', print: 'text', layoutPick: 'one', voicing: false };
 let lastLayout = null;
 let lastChosen = null;
-const APP_VERSION = '20261101-2004'; // set by tools/stamp.py
+const APP_VERSION = '20261109-1647'; // set by tools/stamp.py
 // Self-update: phones keep the old page for up to ~10 minutes. On every open (and when the app comes back
 // to the screen) ask the server for the current version without cache; if it is newer, reload onto it.
 async function checkUpdate() {

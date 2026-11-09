@@ -1,5 +1,5 @@
 // Save the current song as PDF (exact picture of the preview pages) or Word (editable, on the logo template).
-import { transposeChords, stripNiqqud } from './parse.js?v=20261101-2004';
+import { transposeChords, stripNiqqud } from './parse.js?v=20261109-1647';
 
 const loaded = {};
 function loadScript(src) {
@@ -42,25 +42,56 @@ export async function sharePdf(pagesHtml, full, fileBase, text) {
   return 'unsupported';
 }
 
+// iPhone (WebKit) often paints an HTML snapshot blank, and drops images drawn inside it.
+// So each page is built in two layers: the logo-page background goes into the PDF directly as an image,
+// and only the text layer is rendered from HTML. A blank render is detected and retried, then a
+// second renderer (html2canvas) is used.
+const bgCache = {};
+async function imageData(src) {
+  if (!bgCache[src]) bgCache[src] = fetch(src).then((r) => r.blob()).then((b) => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(b); }));
+  return bgCache[src];
+}
+function hasInk(canvas) {
+  // true when the layer has visible (dark enough) pixels, sampled on a grid
+  try {
+    const ctx = canvas.getContext('2d'); const { width: w, height: h } = canvas;
+    const d = ctx.getImageData(0, 0, w, h).data; const step = 4 * 7;
+    for (let i = 3; i < d.length; i += step) if (d[i] > 100 && d[i - 3] + d[i - 2] + d[i - 1] < 600) return true;
+  } catch { return true; }
+  return false;
+}
+async function renderLayer(el) {
+  const ratio = 2.2;
+  for (let attempt = 0; attempt < (window.__forceH2C ? 0 : 3); attempt++) {
+    try {
+      const c = await window.htmlToImage.toCanvas(el, { pixelRatio: ratio, skipFonts: true, cacheBust: false, backgroundColor: null });
+      if (hasInk(c)) return c;
+    } catch (e) { console.warn('html-to-image', e); }
+  }
+  await loadScript('js/vendor/html2canvas.min.js');
+  return window.html2canvas(el, { scale: ratio, backgroundColor: null, logging: false, useCORS: true });
+}
 async function pdfBlob(pagesHtml, full) {
   await Promise.all([loadScript('js/vendor/html-to-image.js'), loadScript('js/vendor/jspdf.umd.min.js')]);
   const host = document.createElement('div');
-  host.style.cssText = 'position:fixed;left:-4000px;top:0;';
+  host.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;opacity:1;pointer-events:none;';
   host.innerHTML = pagesHtml;
   document.body.appendChild(host);
   try {
     const pages = [...host.querySelectorAll('.page')];
-    pages.forEach((p) => { p.style.transform = 'none'; if (!full) p.querySelector('.bg')?.remove(); });
-    await Promise.all([...host.querySelectorAll('img')].map((im) => (im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; }))));
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
     for (let i = 0; i < pages.length; i++) {
-      const opt = { pixelRatio: 2.5, backgroundColor: '#ffffff', skipFonts: true, cacheBust: false };
-      // WebKit sometimes paints the first pass blank; a warm-up pass avoids that
-      await window.htmlToImage.toJpeg(pages[i], { ...opt, pixelRatio: 0.3 });
-      const img = await window.htmlToImage.toJpeg(pages[i], { ...opt, quality: 0.92 });
+      const p = pages[i];
+      p.style.transform = 'none';
+      const bgImg = p.querySelector('.bg');
+      const bgSrc = bgImg && full ? bgImg.getAttribute('src') : null;
+      bgImg?.remove();
+      p.style.background = 'transparent';
       if (i) pdf.addPage();
-      pdf.addImage(img, 'JPEG', 0, 0, 210, 297);
+      if (bgSrc) pdf.addImage(await imageData(bgSrc), 'JPEG', 0, 0, 210, 297, 'bg:' + bgSrc, 'FAST');
+      const layer = await renderLayer(p);
+      pdf.addImage(layer.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
     }
     return pdf.output('blob');
   } finally { host.remove(); }

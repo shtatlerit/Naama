@@ -69,7 +69,22 @@ with sync_playwright() as pw:
     ok(len(set(pg.evaluate("() => [...document.querySelectorAll('#bk-preview .slide .bg')].slice(1).map(i => i.getAttribute('src'))"))) == 3, 'presentation: each song in its own soft colour')
     pg.click('#bk-present'); pg.wait_for_timeout(300); pg.keyboard.press('ArrowLeft'); pg.wait_for_timeout(100)
     ok(pg.inner_text('.pr-n').startswith('2 /'), 'presentation: full screen, arrow moves to next slide')
+    # every slide fills the screen, not only the first one (also after the window size changes)
+    fills = []
+    for k in range(len(sl)):
+        if k == 1: pg.evaluate("() => dispatchEvent(new Event('resize'))"); pg.wait_for_timeout(100)
+        fills.append(pg.evaluate("""() => { const r = document.querySelector('.presenter .slide.on').getBoundingClientRect();
+            return Math.max(r.width / innerWidth, r.height / innerHeight) > 0.98 && Math.abs(r.left + r.width / 2 - innerWidth / 2) < 2 && Math.abs(r.top + r.height / 2 - innerHeight / 2) < 2; }"""))
+        pg.keyboard.press('ArrowLeft' if k < len(sl) - 1 else 'Home'); pg.wait_for_timeout(60)
+    ok(all(fills), f'presentation: every slide fills the screen and is centred {fills}')
     pg.keyboard.press('Escape')
+    # send to WhatsApp / save: a presentation is a PowerPoint file with one slide per slide
+    with pg.expect_download(timeout=120000) as d: pg.click('#bk-pptx')
+    d.value.save_as('/tmp/naama-show.pptx')
+    import zipfile
+    z = zipfile.ZipFile('/tmp/naama-show.pptx'); nslides = len([n for n in z.namelist() if re.match(r'ppt/slides/slide\d+\.xml$', n)])
+    ok(d.value.suggested_filename.endswith('.pptx') and nslides == len(sl), f'presentation: PowerPoint file with all {nslides}/{len(sl)} slides')
+    ok(pg.inner_text('#bk-wa') == 'שליחת המצגת לנעמה בוואטסאפ', 'presentation: WhatsApp sends the presentation')
     # a very long song spans slides with the same font and the same columns on every slide;
     # in two columns both start at the same top line
     pg.click('#book-back'); load(songs['veryLong']); pg.wait_for_timeout(900)

@@ -1,8 +1,8 @@
 // Song presentation (מצגת שירים): 16:9 slides on the logo-page style background.
 // Cover: Naama's logo, the event title and the date (Hebrew + Gregorian). Songs are numbered
 // by their order in the presentation; a long song continues on further slides, never splitting a stanza.
-import { bookDates } from './songbook.js?v=20261124-1830';
-import { markChoruses, stripNiqqud } from './parse.js?v=20261124-1830';
+import { bookDates } from './songbook.js?v=20261124-1840';
+import { markChoruses, stripNiqqud } from './parse.js?v=20261124-1840';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const MAX_FONT = 34, MIN_FONT = 14; // pt, on a 320×180 mm slide. A whole song goes on one slide (it is projected large)
@@ -132,13 +132,17 @@ export function present(html) {
   document.body.appendChild(ov);
   const slides = [...ov.querySelectorAll('.slide')];
   let i = 0, barTimer;
+  // Hidden slides have no size (display:none), so the scale is measured on the slide being shown
+  // and every slide gets it again whenever it comes on screen (and on resize / full screen).
   const fit = () => {
-    const W = innerWidth, H = innerHeight;
-    slides.forEach((s) => { const sc = Math.min(W / s.offsetWidth, H / s.offsetHeight); s.style.transform = `translate(-50%,-50%) scale(${sc})`; });
+    const s = slides[i]; if (!s) return;
+    const w = s.offsetWidth, h = s.offsetHeight; if (!w || !h) return;
+    const sc = Math.min(innerWidth / w, innerHeight / h);
+    slides.forEach((x) => { x.style.transform = `translate(-50%,-50%) scale(${sc})`; });
   };
-  const go = (n) => { i = Math.max(0, Math.min(slides.length - 1, n)); slides.forEach((s, k) => s.classList.toggle('on', k === i)); ov.querySelector('.pr-n').textContent = `${i + 1} / ${slides.length}`; wake(); };
+  const go = (n) => { i = Math.max(0, Math.min(slides.length - 1, n)); slides.forEach((s, k) => s.classList.toggle('on', k === i)); fit(); ov.querySelector('.pr-n').textContent = `${i + 1} / ${slides.length}`; wake(); };
   const wake = () => { ov.classList.add('bar'); clearTimeout(barTimer); barTimer = setTimeout(() => ov.classList.remove('bar'), 2500); };
-  const close = () => { removeEventListener('keydown', key); removeEventListener('resize', fit); if (document.fullscreenElement) document.exitFullscreen?.(); ov.remove(); };
+  const close = () => { removeEventListener('keydown', key); removeEventListener('resize', fit); document.removeEventListener('fullscreenchange', fit); if (document.fullscreenElement) document.exitFullscreen?.(); ov.remove(); };
   // Hebrew reads right to left: the next slide is to the left
   const key = (e) => {
     if ([' ', 'PageDown', 'ArrowDown', 'ArrowLeft', 'Enter'].includes(e.key)) { e.preventDefault(); go(i + 1); }
@@ -157,6 +161,7 @@ export function present(html) {
   ov.addEventListener('mousemove', wake);
   addEventListener('keydown', key); addEventListener('resize', fit);
   ov.requestFullscreen?.().catch(() => {});
-  fit(); go(0);
+  go(0);
+  document.addEventListener('fullscreenchange', fit);
   return { go, close, count: slides.length };
 }

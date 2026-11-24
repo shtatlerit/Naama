@@ -1,9 +1,9 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261124-1830';
-import { computeLayout, pagesHTML } from './layout.js?v=20261124-1830';
-import { savePdf, saveWord, sharePdf } from './export.js?v=20261124-1830';
-import { buildSlides, present } from './slides.js?v=20261124-1830';
-import { buildBook, bookDates } from './songbook.js?v=20261124-1830';
-import { vocalize } from './niqqud.js?v=20261124-1830';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261124-1840';
+import { computeLayout, pagesHTML } from './layout.js?v=20261124-1840';
+import { savePdf, saveWord, sharePdf, savePptx, sharePptx } from './export.js?v=20261124-1840';
+import { buildSlides, present } from './slides.js?v=20261124-1840';
+import { buildBook, bookDates } from './songbook.js?v=20261124-1840';
+import { vocalize } from './niqqud.js?v=20261124-1840';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -41,7 +41,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261124-1830'),
+    import('./firebase-config.js?v=20261124-1840'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
@@ -92,7 +92,7 @@ let cur = null;           // current song
 let view = { kind: 'choir', print: 'text', layoutPick: 'one', voicing: false };
 let lastLayout = null;
 let lastChosen = null;
-const APP_VERSION = '20261124-1830'; // set by tools/stamp.py
+const APP_VERSION = '20261124-1840'; // set by tools/stamp.py
 // Self-update: phones keep the old page for up to ~10 minutes. On every open (and when the app comes back
 // to the screen) ask the server for the current version without cache; if it is newer, reload onto it.
 async function checkUpdate() {
@@ -425,11 +425,11 @@ async function openBooks(kind = 'book') {
   books.sort((a, b) => String(b.updatedAt?.seconds || b.id).localeCompare(String(a.updatedAt?.seconds || a.id)));
   if (!book) book = books[0] ? books[0] : newBook();
   $('#bk-preview').innerHTML = ''; $('#bk-status').textContent = '';
-  ['#bk-print', '#bk-pdf', '#bk-wa', '#bk-present'].forEach((b) => ($(b).disabled = true));
+  ['#bk-print', '#bk-pdf', '#bk-pptx', '#bk-wa', '#bk-present'].forEach((b) => ($(b).disabled = true));
   renderBook();
 }
 function bookChanged() {
-  bookHtml = ''; ['#bk-print', '#bk-pdf', '#bk-wa', '#bk-present'].forEach((b) => ($(b).disabled = true));
+  bookHtml = ''; ['#bk-print', '#bk-pdf', '#bk-pptx', '#bk-wa', '#bk-present'].forEach((b) => ($(b).disabled = true));
   $('#bk-preview').innerHTML = ''; $('#bk-status').textContent = '';
   $('#book-save').textContent = 'שומרת…';
   clearTimeout(bookTimer);
@@ -449,7 +449,8 @@ function renderBook() {
   $('#book-greet').textContent = w().screen; $('#book-list-h').textContent = w().mine;
   $('#bk-chosen-h').textContent = `השירים ב${w().the}, לפי הסדר`;
   $('#bk-book-opts').hidden = isShow(); $('#bk-show-opts').hidden = !isShow();
-  $('#bk-present').hidden = !isShow(); $('#bk-print').hidden = isShow();
+  $('#bk-present').hidden = !isShow(); $('#bk-pptx').hidden = !isShow(); $('#bk-print').hidden = isShow();
+  $('#bk-wa').textContent = isShow() ? 'שליחת המצגת לנעמה בוואטסאפ' : 'שליחה לנעמה בוואטסאפ';
   $('#bk-noniq').checked = !!book.noNiqqud;
   if (!$('#bk-build').disabled) $('#bk-build').textContent = w().make;
   renderBookList();
@@ -520,7 +521,7 @@ function wireBook() {
       scalePreview('#bk-preview');
       $('#bk-status').textContent = isShow() ? `המצגת מוכנה: ${r.count} שקופיות. ב"הצגה במסך מלא": חץ שמאלה או רווח – הבא, חץ ימינה – הקודם, Esc – יציאה. בטלפון: הקשה בצד שמאל או החלקה.`
         : `השירון מוכן: ${r.pageCount} עמודים.` + (r.skipped.length ? ` לא נכנסו (ארוכים מדי): ${r.skipped.join(', ')}` : '');
-      ['#bk-print', '#bk-pdf', '#bk-wa', '#bk-present'].forEach((b) => ($(b).disabled = false));
+      ['#bk-print', '#bk-pdf', '#bk-pptx', '#bk-wa', '#bk-present'].forEach((b) => ($(b).disabled = false));
       pv.scrollIntoView({ behavior: 'smooth' });
     } catch (err) { console.error(err); toast(`הכנת ${w().the} לא הצליחה`); }
     finally { btn.disabled = false; btn.textContent = w().make; }
@@ -529,9 +530,14 @@ function wireBook() {
   $('#bk-print').onclick = () => { $('#print-root').innerHTML = bookHtml; setTimeout(() => window.print(), 80); };
   const busyB = async (btn, label, fn) => { const t = btn.textContent; btn.disabled = true; btn.textContent = label; try { await fn(); } catch (err) { console.error(err); toast('השמירה לא הצליחה. נסי שוב.'); } finally { btn.disabled = false; btn.textContent = t; } };
   $('#bk-pdf').onclick = (e) => busyB(e.currentTarget, 'מכינה PDF…', () => savePdf(bookHtml, isShow() || book.full, name()));
-  $('#bk-wa').onclick = (e) => busyB(e.currentTarget, 'מכינה PDF…', async () => {
-    const r = await sharePdf(bookHtml, isShow() || book.full, name(), book.title || w().one);
-    if (r === 'again') toast('ה-PDF מוכן. לחצי שוב על "שליחה לנעמה בוואטסאפ".', 6000);
-    if (r === 'unsupported') { toast('ה-PDF ירד. בוואטסאפ שנפתח, צרפי אותו (📎).', 7000); window.open('https://wa.me/' + NAAMA_WA + '?text=' + encodeURIComponent(book.title || 'שירון'), '_blank', 'noopener'); }
+  $('#bk-pptx').onclick = (e) => busyB(e.currentTarget, 'מכינה מצגת…', () => savePptx(bookHtml, name()));
+  // A presentation is sent as a PowerPoint file, so Naama can play it (PowerPoint / Keynote / Google Slides);
+  // a songbook is sent as PDF.
+  $('#bk-wa').onclick = (e) => busyB(e.currentTarget, isShow() ? 'מכינה מצגת…' : 'מכינה PDF…', async () => {
+    const kind = isShow() ? 'המצגת' : 'ה-PDF';
+    const r = isShow() ? await sharePptx(bookHtml, name(), book.title || w().one)
+      : await sharePdf(bookHtml, book.full, name(), book.title || w().one);
+    if (r === 'again') toast(`${kind} מוכן${isShow() ? 'ה' : ''}. לחצי שוב על "${isShow() ? 'שליחת המצגת לנעמה בוואטסאפ' : 'שליחה לנעמה בוואטסאפ'}".`, 6000);
+    if (r === 'unsupported') { toast(`${kind} ירד${isShow() ? 'ה' : ''}. בוואטסאפ שנפתח, צרפי את הקובץ (📎).`, 7000); window.open('https://wa.me/' + NAAMA_WA + '?text=' + encodeURIComponent(book.title || w().one), '_blank', 'noopener'); }
   });
 }

@@ -1,5 +1,5 @@
 // Save the current song as PDF (exact picture of the preview pages) or Word (editable, on the logo template).
-import { transposeChords, stripNiqqud } from './parse.js?v=20261124-1830';
+import { transposeChords, stripNiqqud } from './parse.js?v=20261124-1840';
 
 const loaded = {};
 function loadScript(src) {
@@ -24,18 +24,26 @@ export async function savePdf(pagesHtml, full, fileBase) {
 // Making the PDF takes a few seconds; iPhone may then refuse to open the share sheet ('again'):
 // the ready file is kept so the next tap shares it at once.
 let ready = null;
-export async function sharePdf(pagesHtml, full, fileBase, text) {
-  let file = ready && ready.key === fileBase + full ? ready.file : null;
+export function sharePdf(pagesHtml, full, fileBase, text) {
+  return shareFile(async () => new File([await pdfBlob(pagesHtml, full)], safeName(fileBase) + '.pdf', { type: 'application/pdf' }), fileBase + full + 'pdf', text);
+}
+// A presentation goes to WhatsApp as a real PowerPoint file (opens in PowerPoint / Keynote / Google Slides and plays there).
+const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+export async function savePptx(pagesHtml, fileBase) {
+  download(await pptxBlob(pagesHtml), safeName(fileBase) + '.pptx');
+}
+export function sharePptx(pagesHtml, fileBase, text) {
+  return shareFile(async () => new File([await pptxBlob(pagesHtml)], safeName(fileBase) + '.pptx', { type: PPTX }), fileBase + 'pptx', text);
+}
+async function shareFile(make, key, text) {
+  let file = ready && ready.key === key ? ready.file : null;
   ready = null;
-  if (!file) {
-    const blob = await pdfBlob(pagesHtml, full);
-    file = new File([blob], safeName(fileBase) + '.pdf', { type: 'application/pdf' });
-  }
+  if (!file) file = await make();
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], text }); return 'shared'; }
     catch (e) {
       if (e.name === 'AbortError') return 'cancelled';
-      if (e.name === 'NotAllowedError') { ready = { key: fileBase + full, file }; return 'again'; }
+      if (e.name === 'NotAllowedError') { ready = { key, file }; return 'again'; }
     }
   }
   download(file, file.name);
@@ -71,18 +79,16 @@ async function renderLayer(el) {
   await loadScript('js/vendor/html2canvas.min.js');
   return window.html2canvas(el, { scale: ratio, backgroundColor: null, logging: false, useCORS: true });
 }
-async function pdfBlob(pagesHtml, full) {
-  await Promise.all([loadScript('js/vendor/html-to-image.js'), loadScript('js/vendor/jspdf.umd.min.js')]);
+// Renders each page in two layers (see above) and hands them to `add(i, bgSrc, layerPng, slide)`.
+async function eachPage(pagesHtml, full, add) {
+  await loadScript('js/vendor/html-to-image.js');
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:0;top:0;z-index:-1;opacity:1;pointer-events:none;';
   host.innerHTML = pagesHtml;
   document.body.appendChild(host);
   try {
     const pages = [...host.querySelectorAll('.page')];
-    const { jsPDF } = window.jspdf;
-    const slide = pages[0]?.classList.contains('slide');
-    const [PW, PH] = slide ? [320, 180] : [210, 297];
-    const pdf = new jsPDF({ unit: 'mm', format: [PW, PH], orientation: slide ? 'landscape' : 'portrait', compress: true });
+    const slide = !!pages[0]?.classList.contains('slide');
     for (let i = 0; i < pages.length; i++) {
       const p = pages[i];
       p.style.transform = 'none';
@@ -90,13 +96,36 @@ async function pdfBlob(pagesHtml, full) {
       const bgSrc = bgImg && full ? bgImg.getAttribute('src') : null;
       bgImg?.remove();
       p.style.background = 'transparent';
-      if (i) pdf.addPage([PW, PH], slide ? 'landscape' : 'portrait');
-      if (bgSrc) pdf.addImage(await imageData(bgSrc), 'JPEG', 0, 0, PW, PH, 'bg:' + bgSrc, 'FAST');
       const layer = await renderLayer(p);
-      pdf.addImage(layer.toDataURL('image/png'), 'PNG', 0, 0, PW, PH, undefined, 'FAST');
+      await add(i, bgSrc, layer.toDataURL('image/png'), slide);
     }
-    return pdf.output('blob');
   } finally { host.remove(); }
+}
+async function pdfBlob(pagesHtml, full) {
+  await loadScript('js/vendor/jspdf.umd.min.js');
+  let pdf, PW, PH;
+  await eachPage(pagesHtml, full, async (i, bgSrc, png, slide) => {
+    if (!pdf) {
+      [PW, PH] = slide ? [320, 180] : [210, 297];
+      pdf = new window.jspdf.jsPDF({ unit: 'mm', format: [PW, PH], orientation: slide ? 'landscape' : 'portrait', compress: true });
+    } else pdf.addPage([PW, PH], slide ? 'landscape' : 'portrait');
+    if (bgSrc) pdf.addImage(await imageData(bgSrc), 'JPEG', 0, 0, PW, PH, 'bg:' + bgSrc, 'FAST');
+    pdf.addImage(png, 'PNG', 0, 0, PW, PH, undefined, 'FAST');
+  });
+  return pdf.output('blob');
+}
+async function pptxBlob(pagesHtml) {
+  await loadScript('js/vendor/pptxgen.bundle.js');
+  const pp = new window.PptxGenJS();
+  pp.defineLayout({ name: 'NAAMA', width: 320 / 25.4, height: 180 / 25.4 });
+  pp.layout = 'NAAMA'; pp.rtlMode = true; pp.author = 'נעמה זנבר'; pp.title = 'מצגת שירים';
+  const W = 320 / 25.4, H = 180 / 25.4;
+  await eachPage(pagesHtml, true, async (i, bgSrc, png) => {
+    const s = pp.addSlide();
+    if (bgSrc) s.background = { data: await imageData(bgSrc) };
+    s.addImage({ data: png, x: 0, y: 0, w: W, h: H });
+  });
+  return pp.write({ outputType: 'blob' });
 }
 
 /* ---------------- Word ---------------- */

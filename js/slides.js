@@ -1,8 +1,8 @@
 // Song presentation (מצגת שירים): 16:9 slides on the logo-page style background.
 // Cover: Naama's logo, the event title and the date (Hebrew + Gregorian). Songs are numbered
 // by their order in the presentation; a long song continues on further slides, never splitting a stanza.
-import { bookDates } from './songbook.js?v=20261124-1840';
-import { markChoruses, stripNiqqud } from './parse.js?v=20261124-1840';
+import { bookDates } from './songbook.js?v=20261124-1845';
+import { markChoruses, stripNiqqud } from './parse.js?v=20261124-1845';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const MAX_FONT = 34, MIN_FONT = 14; // pt, on a 320×180 mm slide. A whole song goes on one slide (it is projected large)

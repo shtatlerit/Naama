@@ -1,5 +1,5 @@
 // Save the current song as PDF (exact picture of the preview pages) or Word (editable, on the logo template).
-import { transposeChords, stripNiqqud } from './parse.js?v=20261124-1840';
+import { transposeChords, stripNiqqud } from './parse.js?v=20261124-1845';
 
 const loaded = {};
 function loadScript(src) {
@@ -23,27 +23,42 @@ export async function savePdf(pagesHtml, full, fileBase) {
 // Returns 'shared' | 'cancelled' | 'unsupported' (then the PDF is downloaded instead).
 // Making the PDF takes a few seconds; iPhone may then refuse to open the share sheet ('again'):
 // the ready file is kept so the next tap shares it at once.
-let ready = null;
-export function sharePdf(pagesHtml, full, fileBase, text) {
-  return shareFile(async () => new File([await pdfBlob(pagesHtml, full)], safeName(fileBase) + '.pdf', { type: 'application/pdf' }), fileBase + full + 'pdf', text);
+// iPhone opens the share sheet only right after a tap. Making the file takes a few seconds, so the file is
+// prepared in advance (right after "הכנת המצגת/השירון") and the send button shares it at once.
+// Prepared files are kept by content, so sending again (or after a refusal) is immediate.
+const prepared = new Map();
+const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return s.length + ':' + h; };
+function prepare(make, key) {
+  if (!prepared.has(key)) {
+    const e = {};
+    e.promise = make().then((f) => (e.file = f)).catch((err) => { prepared.delete(key); throw err; });
+    prepared.set(key, e);
+  }
+  return prepared.get(key);
 }
+const pdfJob = (pagesHtml, full, fileBase) => prepare(async () => new File([await pdfBlob(pagesHtml, full)], safeName(fileBase) + '.pdf', { type: 'application/pdf' }), 'pdf' + full + fileBase + hash(pagesHtml));
 // A presentation goes to WhatsApp as a real PowerPoint file (opens in PowerPoint / Keynote / Google Slides and plays there).
 const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const pptxJob = (pagesHtml, fileBase) => prepare(async () => new File([await pptxBlob(pagesHtml)], safeName(fileBase) + '.pptx', { type: PPTX }), 'pptx' + fileBase + hash(pagesHtml));
+export const preparePdf = (pagesHtml, full, fileBase) => pdfJob(pagesHtml, full, fileBase).promise;
+export const preparePptx = (pagesHtml, fileBase) => pptxJob(pagesHtml, fileBase).promise;
+export const sharePdf = (pagesHtml, full, fileBase, text) => shareFile(pdfJob(pagesHtml, full, fileBase), text);
+export const sharePptx = (pagesHtml, fileBase, text) => shareFile(pptxJob(pagesHtml, fileBase), text);
 export async function savePptx(pagesHtml, fileBase) {
-  download(await pptxBlob(pagesHtml), safeName(fileBase) + '.pptx');
+  const f = await preparePptx(pagesHtml, fileBase); download(f, f.name);
 }
-export function sharePptx(pagesHtml, fileBase, text) {
-  return shareFile(async () => new File([await pptxBlob(pagesHtml)], safeName(fileBase) + '.pptx', { type: PPTX }), fileBase + 'pptx', text);
-}
-async function shareFile(make, key, text) {
-  let file = ready && ready.key === key ? ready.file : null;
-  ready = null;
-  if (!file) file = await make();
+// Returns 'shared' | 'cancelled' | 'again' (file was not ready; tap again) | 'unsupported' (downloaded instead)
+// or {error} when the device refused although the file was ready.
+async function shareFile(job, text) {
+  const waited = !job.file;
+  const file = job.file || await job.promise;
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], text }); return 'shared'; }
     catch (e) {
       if (e.name === 'AbortError') return 'cancelled';
-      if (e.name === 'NotAllowedError') { ready = { key, file }; return 'again'; }
+      if (waited && e.name === 'NotAllowedError') return 'again';
+      try { await navigator.share({ files: [file] }); return 'shared'; } // some apps refuse file + text together
+      catch (e2) { if (e2.name === 'AbortError') return 'cancelled'; return { error: `${e2.name}: ${e2.message}` }; }
     }
   }
   download(file, file.name);

@@ -85,6 +85,13 @@ with sync_playwright() as pw:
     z = zipfile.ZipFile('/tmp/naama-show.pptx'); nslides = len([n for n in z.namelist() if re.match(r'ppt/slides/slide\d+\.xml$', n)])
     ok(d.value.suggested_filename.endswith('.pptx') and nslides == len(sl), f'presentation: PowerPoint file with all {nslides}/{len(sl)} slides')
     ok(pg.inner_text('#bk-wa') == 'שליחת המצגת לנעמה בוואטסאפ', 'presentation: WhatsApp sends the presentation')
+    # the file is prepared right after building, so one tap opens the share sheet (iPhone allows it only right after a tap)
+    pg.wait_for_selector('#bk-status:has-text("מוכן לשליחה")', timeout=120000)
+    pg.evaluate("""() => { window.__shared = []; navigator.canShare = () => true;
+        navigator.share = (d) => { window.__shared.push(d.files.map(f => f.name)); return Promise.resolve(); }; }""")
+    t0 = pg.evaluate('() => performance.now()'); pg.click('#bk-wa'); pg.wait_for_timeout(200)
+    shared = pg.evaluate('() => window.__shared')
+    ok(len(shared) == 1 and shared[0][0].endswith('.pptx'), f'presentation: one tap on WhatsApp shares the prepared PowerPoint {shared}')
     # a very long song spans slides with the same font and the same columns on every slide;
     # in two columns both start at the same top line
     pg.click('#book-back'); load(songs['veryLong']); pg.wait_for_timeout(900)

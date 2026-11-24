@@ -1,9 +1,9 @@
-import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261124-1840';
-import { computeLayout, pagesHTML } from './layout.js?v=20261124-1840';
-import { savePdf, saveWord, sharePdf, savePptx, sharePptx } from './export.js?v=20261124-1840';
-import { buildSlides, present } from './slides.js?v=20261124-1840';
-import { buildBook, bookDates } from './songbook.js?v=20261124-1840';
-import { vocalize } from './niqqud.js?v=20261124-1840';
+import { parseImport, mergeChords, toText, fromText, stripMdLinks, markChoruses, isJunk } from './parse.js?v=20261124-1845';
+import { computeLayout, pagesHTML } from './layout.js?v=20261124-1845';
+import { savePdf, saveWord, sharePdf, savePptx, sharePptx, preparePdf, preparePptx } from './export.js?v=20261124-1845';
+import { buildSlides, present } from './slides.js?v=20261124-1845';
+import { buildBook, bookDates } from './songbook.js?v=20261124-1845';
+import { vocalize } from './niqqud.js?v=20261124-1845';
 
 const APP_URL = 'https://shtatlerit.github.io/Naama/';
 const NAAMA_EMAIL = 'shtatlerit@gmail.com';
@@ -41,7 +41,7 @@ async function initStore() {
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
     import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
-    import('./firebase-config.js?v=20261124-1840'),
+    import('./firebase-config.js?v=20261124-1845'),
   ]);
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
@@ -92,7 +92,7 @@ let cur = null;           // current song
 let view = { kind: 'choir', print: 'text', layoutPick: 'one', voicing: false };
 let lastLayout = null;
 let lastChosen = null;
-const APP_VERSION = '20261124-1840'; // set by tools/stamp.py
+const APP_VERSION = '20261124-1845'; // set by tools/stamp.py
 // Self-update: phones keep the old page for up to ~10 minutes. On every open (and when the app comes back
 // to the screen) ask the server for the current version without cache; if it is newer, reload onto it.
 async function checkUpdate() {
@@ -352,6 +352,7 @@ function wire() {
     refresh(); if (!lastChosen) return;
     const r = await sharePdf(pagesHTML(lastChosen), view.print === 'full', fileBase(), cur.title || '');
     if (r === 'again') toast('ה-PDF מוכן. לחצי שוב על "שליחה לנעמה בוואטסאפ".', 6000);
+    if (r?.error) toast('המכשיר לא פתח את תפריט השיתוף (' + r.error + '). אפשר לשמור כ-PDF ולצרף בוואטסאפ.', 9000);
     if (r === 'unsupported') {
       toast('ה-PDF ירד למחשב. בוואטסאפ שנפתח, צרפי אותו בשיחה (📎).', 7000);
       window.open('https://wa.me/' + NAAMA_WA + '?text=' + encodeURIComponent(cur.title || ''), '_blank', 'noopener');
@@ -522,6 +523,12 @@ function wireBook() {
       $('#bk-status').textContent = isShow() ? `המצגת מוכנה: ${r.count} שקופיות. ב"הצגה במסך מלא": חץ שמאלה או רווח – הבא, חץ ימינה – הקודם, Esc – יציאה. בטלפון: הקשה בצד שמאל או החלקה.`
         : `השירון מוכן: ${r.pageCount} עמודים.` + (r.skipped.length ? ` לא נכנסו (ארוכים מדי): ${r.skipped.join(', ')}` : '');
       ['#bk-print', '#bk-pdf', '#bk-pptx', '#bk-wa', '#bk-present'].forEach((b) => ($(b).disabled = false));
+      // prepare the file for WhatsApp now, so the send button opens the share sheet at once (iPhone needs that)
+      const st = $('#bk-status'), base = st.textContent, html = bookHtml;
+      st.textContent = base + ' מכינה קובץ לשליחה…';
+      (isShow() ? preparePptx(html, name()) : preparePdf(html, book.full, name()))
+        .then(() => { if (bookHtml === html) st.textContent = base + ' ✓ מוכן לשליחה בוואטסאפ.'; })
+        .catch((err) => { console.warn(err); if (bookHtml === html) st.textContent = base; });
       pv.scrollIntoView({ behavior: 'smooth' });
     } catch (err) { console.error(err); toast(`הכנת ${w().the} לא הצליחה`); }
     finally { btn.disabled = false; btn.textContent = w().make; }
@@ -537,6 +544,7 @@ function wireBook() {
     const kind = isShow() ? 'המצגת' : 'ה-PDF';
     const r = isShow() ? await sharePptx(bookHtml, name(), book.title || w().one)
       : await sharePdf(bookHtml, book.full, name(), book.title || w().one);
+    if (r?.error) toast(`המכשיר לא פתח את תפריט השיתוף (${r.error}). אפשר לשמור את הקובץ ולצרף בוואטסאפ.`, 9000);
     if (r === 'again') toast(`${kind} מוכן${isShow() ? 'ה' : ''}. לחצי שוב על "${isShow() ? 'שליחת המצגת לנעמה בוואטסאפ' : 'שליחה לנעמה בוואטסאפ'}".`, 6000);
     if (r === 'unsupported') { toast(`${kind} ירד${isShow() ? 'ה' : ''}. בוואטסאפ שנפתח, צרפי את הקובץ (📎).`, 7000); window.open('https://wa.me/' + NAAMA_WA + '?text=' + encodeURIComponent(book.title || w().one), '_blank', 'noopener'); }
   });

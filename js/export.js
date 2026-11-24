@@ -1,5 +1,5 @@
 // Save the current song as PDF (exact picture of the preview pages) or Word (editable, on the logo template).
-import { transposeChords, stripNiqqud } from './parse.js?v=20261124-1817';
+import { transposeChords, stripNiqqud } from './parse.js?v=20261124-1830';
 
 const loaded = {};
 function loadScript(src) {

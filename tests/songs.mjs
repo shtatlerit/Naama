@@ -46,3 +46,6 @@ export const titleFirst = {
 };
 // the same page through the older button (no "body", header cut at the menu)
 export const titleFirstOld = { ...titleFirst, body: undefined, head: menu };
+
+// Presentation: a very long song (many stanzas) spans slides – all its slides must look the same.
+export const veryLong = song(HEAD, Array.from({ length: 16 }, (_, i) => v('בית ארוך ' + (i + 1), 6)));

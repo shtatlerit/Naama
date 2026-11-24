@@ -70,5 +70,20 @@ with sync_playwright() as pw:
     pg.click('#bk-present'); pg.wait_for_timeout(300); pg.keyboard.press('ArrowLeft'); pg.wait_for_timeout(100)
     ok(pg.inner_text('.pr-n').startswith('2 /'), 'presentation: full screen, arrow moves to next slide')
     pg.keyboard.press('Escape')
+    # a very long song spans slides with the same font and the same columns on every slide;
+    # in two columns both start at the same top line
+    pg.click('#book-back'); load(songs['veryLong']); pg.wait_for_timeout(900)
+    pg.click('#btn-back'); pg.click('#btn-show'); pg.wait_for_timeout(300)
+    pg.click('#book-new'); pg.fill('#bk-q', 'בית ארוך'); pg.wait_for_timeout(100)
+    pg.fill('#bk-q', ''); 
+    pg.evaluate("() => { const b = [...document.querySelectorAll('#bk-pick [data-add]')]; b[b.length - 1].click(); }")
+    pg.click('#bk-build'); pg.wait_for_selector('#bk-status:has-text("מוכנה")', timeout=180000)
+    lv = pg.evaluate("""() => [...document.querySelectorAll('#bk-preview .slide')].slice(1).map(s => ({
+        fs: getComputedStyle(s).getPropertyValue('--sfs').trim(), two: !!s.querySelector('.sl-body.two'),
+        tops: [...s.querySelectorAll('.sl-col')].map(c => Math.round(c.firstElementChild.getBoundingClientRect().top)),
+        over: [...s.querySelectorAll('.lt')].some(l => l.scrollWidth > l.clientWidth + 1) || s.querySelector('.sl-body').scrollHeight > s.querySelector('.sl-body').clientHeight + 1 }))""")
+    ok(len(lv) >= 2 and len({x['fs'] for x in lv}) == 1 and len({x['two'] for x in lv if True}) == 1, f"presentation: a song over several slides keeps one font and layout {[(x['fs'], x['two']) for x in lv]}")
+    ok(all(len(set(x['tops'])) <= 1 for x in lv), 'presentation: two columns start at the same top line')
+    ok(not any(x['over'] for x in lv), 'presentation: long song does not overflow')
     b.close()
 print(f'\n{fail} FAILED' if fail else '\nall layout tests passed'); raise SystemExit(1 if fail else 0)

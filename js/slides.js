@@ -1,12 +1,12 @@
 // Song presentation (מצגת שירים): 16:9 slides on the logo-page style background.
 // Cover: Naama's logo, the event title and the date (Hebrew + Gregorian). Songs are numbered
 // by their order in the presentation; a long song continues on further slides, never splitting a stanza.
-import { bookDates } from './songbook.js?v=20261124-1808';
-import { markChoruses, stripNiqqud } from './parse.js?v=20261124-1808';
+import { bookDates } from './songbook.js?v=20261124-1817';
+import { markChoruses, stripNiqqud } from './parse.js?v=20261124-1817';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const MAX_FONT = 44, MIN_FONT = 16; // pt, on a 320×180 mm slide: projected, it must read from the back of a hall
-const ONE_SLIDE_MIN = 32; // a whole song stays on one slide only if it is still this large
+const MAX_FONT = 34, MIN_FONT = 14; // pt, on a 320×180 mm slide. A whole song goes on one slide (it is projected large)
+const TINTS = 5; // img/slide-bg-1..5.jpg: soft hues that change from song to song
 
 // full choruses instead of "first line..." references: on a screen everyone sings from the slide
 function stanzasOf(song, noNiqqud) {
@@ -21,10 +21,13 @@ function stanzaHTML(s) {
   const lbl = s.type === 'chorus' ? '<div class="lbl">פזמון</div>' : '';
   return `<div class="${cls}">${lbl}${s.lines.map((l) => `<div class="lt">${esc(l.t) || '&nbsp;'}</div>`).join('')}</div>`;
 }
-function songSlide(num, song, stanzas, cont) {
-  return `<section class="page slide full"><img class="bg" src="img/slide-bg.jpg" alt="">
+function songSlide(num, song, stanzas, cont, split = null) {
+  const tint = ((num - 1) % TINTS) + 1;
+  const body = split == null ? stanzas.map(stanzaHTML).join('')
+    : `<div class="sl-col">${stanzas.slice(0, split).map(stanzaHTML).join('')}</div><div class="sl-col">${stanzas.slice(split).map(stanzaHTML).join('')}</div>`;
+  return `<section class="page slide full"><img class="bg" src="img/slide-bg-${tint}.jpg" alt="">
     <div class="sl-head"><span class="sl-num">${num}</span><span class="sl-title">${esc(song.title || 'שיר')}</span>${cont ? '<span class="sl-cont">(המשך)</span>' : ''}</div>
-    <div class="sl-body">${stanzas.map(stanzaHTML).join('')}</div></section>`;
+    <div class="sl-body${split == null ? '' : ' two'}">${body}</div></section>`;
 }
 
 let stage;
@@ -37,26 +40,39 @@ function fits(html, fs) {
   return ![...sl.querySelectorAll('.lt')].some((l) => l.scrollWidth > l.clientWidth + 1);
 }
 
-// Largest font at which every stanza fits a slide on its own; then fill slides with whole stanzas.
+function bestFont(html) {
+  if (!fits(html, MIN_FONT)) return 0;
+  let lo = MIN_FONT, hi = MAX_FONT;
+  if (fits(html, hi)) return hi;
+  while (hi - lo > 0.25) { const m = (lo + hi) / 2; if (fits(html, m)) lo = m; else hi = m; }
+  return Math.floor(lo * 2) / 2;
+}
+const rows = (arr) => arr.reduce((n, s) => n + s.lines.length + 1, 0);
+// The whole song on one slide: one column, or two balanced columns when that gives a clearly larger font.
+function layoutGroup(num, song, st, cont) {
+  let best = { split: null, fs: bestFont(songSlide(num, song, st, cont)) };
+  const total = rows(st);
+  for (let k = 1; k < st.length; k++) {
+    if (Math.abs(rows(st.slice(0, k)) * 2 - total) > total * 0.5) continue; // only roughly balanced splits
+    const fs = bestFont(songSlide(num, song, st, cont, k));
+    if (fs > best.fs + 2 || (best.split != null && fs > best.fs)) best = { split: k, fs };
+  }
+  return best;
+}
 function slidesForSong(num, song, opts) {
   const st = stanzasOf(song, opts.noNiqqud);
   if (!st.length) return [];
-  let fs = MIN_FONT;
-  for (let f = MAX_FONT; f >= MIN_FONT; f -= 1) {
-    if (st.every((s) => fits(songSlide(num, song, [s], false), f))) { fs = f; break; }
-  }
-  // if the whole song fits on one slide at a font not much smaller, prefer one slide
-  for (let f = fs; f >= Math.max(ONE_SLIDE_MIN, fs - 6); f -= 1) {
-    if (fits(songSlide(num, song, st, false), f)) return [{ html: songSlide(num, song, st, false), fs: f }];
-  }
+  const one = layoutGroup(num, song, st, false);
+  if (one.fs) return [{ html: songSlide(num, song, st, false, one.split), fs: one.fs }];
+  // very long song: whole stanzas over as few slides as possible, each laid out the same way
   const out = []; let cur = [];
   for (const s of st) {
     const next = [...cur, s];
-    if (!cur.length || fits(songSlide(num, song, next, out.length > 0), fs)) cur = next;
+    if (!cur.length || layoutGroup(num, song, next, out.length > 0).fs >= 18) cur = next;
     else { out.push(cur); cur = [s]; }
   }
   if (cur.length) out.push(cur);
-  return out.map((group, i) => ({ html: songSlide(num, song, group, i > 0), fs }));
+  return out.map((g, i) => { const L = layoutGroup(num, song, g, i > 0); return { html: songSlide(num, song, g, i > 0, L.split), fs: L.fs || MIN_FONT }; });
 }
 
 export function coverSlide(show) {

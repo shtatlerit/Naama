@@ -84,3 +84,7 @@
 .page.slide .st { font-size: inherit; margin: 0 0 0.55em; }
 .page.slide .st:last-child { margin-bottom: 0; }
 .page.slide .lt { font-size: inherit; line-height: 1.3; }
+.slide .sl-body.two { flex-direction: row; align-items: center; justify-content: center; gap: 0; }
+.slide .sl-body.two .sl-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 5mm; }
+.slide .sl-body.two .sl-col + .sl-col { border-right: 0.35mm solid rgba(176,138,94,.55); }
+.slide .sl-head .sl-title { color: var(--navy); }

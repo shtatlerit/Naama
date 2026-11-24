@@ -63,9 +63,10 @@ with sync_playwright() as pw:
                  fs: parseFloat(getComputedStyle(s.querySelector('.lt') || s).fontSize) } })""")
     ok(sl[0]['cover'] and 'כ״ו בכסלו תשפ״ז' in sl[0]['date'] and '2026' in sl[0]['date'], 'presentation: cover with Hebrew and Gregorian date')
     nums = [x['num'] for x in sl[1:]]
-    ok(nums == sorted(nums, key=int) and nums[0] == '1' and len(set(nums)) == 3, f'presentation: songs numbered by order {sorted(set(nums))}')
+    ok(nums == ['1', '2', '3'], f'presentation: one slide per song, numbered by order {nums}')
     ok(not any(x['over'] for x in sl), 'presentation: nothing overflows or breaks a line')
-    ok(min(x['fs'] for x in sl[1:]) >= 21, f"presentation: lyrics large enough to project (min {min(x['fs'] for x in sl[1:]):.0f}px)")
+    ok(min(x['fs'] for x in sl[1:]) >= 18, f"presentation: lyrics large enough to project (min {min(x['fs'] for x in sl[1:]):.0f}px)")
+    ok(len(set(pg.evaluate("() => [...document.querySelectorAll('#bk-preview .slide .bg')].slice(1).map(i => i.getAttribute('src'))"))) == 3, 'presentation: each song in its own soft colour')
     pg.click('#bk-present'); pg.wait_for_timeout(300); pg.keyboard.press('ArrowLeft'); pg.wait_for_timeout(100)
     ok(pg.inner_text('.pr-n').startswith('2 /'), 'presentation: full screen, arrow moves to next slide')
     pg.keyboard.press('Escape')

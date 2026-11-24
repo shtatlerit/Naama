@@ -61,3 +61,26 @@
   .page { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 #print-root { display: none; }
+
+/* ---------- song presentation (16:9 slides, js/slides.js) ---------- */
+.page.slide { width: 320mm; height: 180mm; --sfs: 24pt; }
+.page.slide .bg { width: 100%; height: 100%; }
+.slide .sl-head { position: absolute; top: 10mm; left: 30mm; right: 30mm; display: flex; justify-content: center; align-items: baseline; gap: 4mm; color: var(--navy); }
+.slide .sl-num { display: inline-flex; align-items: center; justify-content: center; min-width: 11mm; height: 11mm; padding: 0 2mm; border-radius: 6mm; background: var(--gold); color: #fff; font-weight: 700; font-size: 16pt; transform: translateY(-1mm); }
+.slide .sl-title { font-size: 22pt; font-weight: 700; }
+.slide .sl-cont { font-size: 12pt; color: var(--slate); }
+.slide .sl-body { position: absolute; top: 27mm; left: 30mm; right: 30mm; bottom: 20mm; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; font-size: var(--sfs); }
+.slide .st { margin: 0 0 0.55em; text-align: center; width: 100%; }
+.slide .st:last-child { margin-bottom: 0; }
+.slide .lt { white-space: nowrap; overflow: hidden; line-height: 1.3; }
+.slide .st.chorus .lt { font-weight: 700; }
+.slide .st .lbl { font-size: 0.42em; font-weight: 700; color: var(--gold); letter-spacing: .5pt; margin-bottom: .1em; }
+.slide .st.note .lt { font-size: .55em; font-style: italic; font-weight: 700; color: var(--gold); white-space: normal; }
+.slide .sl-cover { position: absolute; left: 25mm; right: 25mm; top: 103mm; text-align: center; color: var(--navy); }
+.slide .sl-cover h1 { margin: 0; font-size: 38pt; line-height: 1.15; font-weight: 700; }
+.slide .sl-date { margin-top: 5mm; font-size: 17pt; color: var(--slate); display: flex; justify-content: center; align-items: center; gap: 4mm; }
+.slide .sl-date .dot { width: 2mm; height: 2mm; border-radius: 50%; background: var(--gold); display: inline-block; }
+/* slides take their own size, not the song-page --fs */
+.page.slide .st { font-size: inherit; margin: 0 0 0.55em; }
+.page.slide .st:last-child { margin-bottom: 0; }
+.page.slide .lt { font-size: inherit; line-height: 1.3; }

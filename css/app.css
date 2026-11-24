@@ -109,3 +109,15 @@ textarea { resize: vertical; line-height: 1.5; }
 .bk-chosen button:disabled { opacity: .3; cursor: default; }
 .bk-chosen button:focus-visible { outline: 2px solid var(--gold); }
 #bk-pick .in { color: var(--gold); font-size: 14px; }
+
+/* presenter (full screen slides) */
+.presenter { position: fixed; inset: 0; z-index: 1000; background: #000; cursor: none; touch-action: pan-y; }
+.presenter.bar { cursor: default; }
+.presenter .pr-stage { position: absolute; inset: 0; }
+.presenter .slide { position: absolute; left: 50%; top: 50%; transform-origin: center; display: none; box-shadow: none; }
+.presenter .slide.on { display: block; }
+.presenter .pr-bar { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: rgba(20,28,45,.72); color: #fff; padding: 6px 10px; border-radius: 12px; opacity: 0; transition: opacity .3s; font: 15px system-ui, sans-serif; }
+.presenter.bar .pr-bar { opacity: 1; }
+.presenter .pr-bar button { all: unset; cursor: pointer; padding: 6px 12px; border-radius: 8px; font-size: 20px; line-height: 1; }
+.presenter .pr-bar button:hover, .presenter .pr-bar button:focus-visible { background: rgba(255,255,255,.18); }
+.presenter .pr-n { min-width: 4.5em; text-align: center; }

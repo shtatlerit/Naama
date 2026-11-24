@@ -50,5 +50,24 @@ with sync_playwright() as pw:
     ok(info['nums'] == [str(i + 1) for i in range(len(info['nums']))], f"songbook: song pages numbered from 1 {info['nums']}")
     ok(all(t in info['nums'] for t in info['tocNums']), f"songbook: contents point to real pages {info['tocNums']}")
     ok(not info['over'], 'songbook: nothing overflows a page')
+    # song presentation: cover with date, numbered slides in order, no overflow, presenter works
+    pg.click('#book-back'); pg.click('#btn-show'); pg.wait_for_timeout(400)
+    ok(pg.inner_text('#book-greet') == 'מצגת שירים' and pg.is_hidden('#bk-book-opts'), 'presentation: own screen and options')
+    pg.click('#book-new'); pg.fill('#bk-title', 'ערב'); pg.fill('#bk-date', '2026-12-06'); pg.dispatch_event('#bk-date', 'change')
+    for i in range(min(3, len(pg.query_selector_all('#bk-pick [data-add]')))): pg.click(f'#bk-pick li:nth-child({i+1}) [data-add]')
+    pg.click('#bk-build'); pg.wait_for_selector('#bk-status:has-text("מוכנה")', timeout=120000)
+    sl = pg.evaluate("""() => [...document.querySelectorAll('#bk-preview .slide')].map(s => {
+        const b = s.querySelector('.sl-body');
+        return { cover: !!s.querySelector('.sl-cover'), date: s.querySelector('.sl-date')?.textContent || '', num: s.querySelector('.sl-num')?.textContent || '',
+                 over: b ? (b.scrollHeight > b.clientHeight + 1 || [...s.querySelectorAll('.lt')].some(l => l.scrollWidth > l.clientWidth + 1)) : false,
+                 fs: parseFloat(getComputedStyle(s.querySelector('.lt') || s).fontSize) } })""")
+    ok(sl[0]['cover'] and 'כ״ו בכסלו תשפ״ז' in sl[0]['date'] and '2026' in sl[0]['date'], 'presentation: cover with Hebrew and Gregorian date')
+    nums = [x['num'] for x in sl[1:]]
+    ok(nums == sorted(nums, key=int) and nums[0] == '1' and len(set(nums)) == 3, f'presentation: songs numbered by order {sorted(set(nums))}')
+    ok(not any(x['over'] for x in sl), 'presentation: nothing overflows or breaks a line')
+    ok(min(x['fs'] for x in sl[1:]) >= 21, f"presentation: lyrics large enough to project (min {min(x['fs'] for x in sl[1:]):.0f}px)")
+    pg.click('#bk-present'); pg.wait_for_timeout(300); pg.keyboard.press('ArrowLeft'); pg.wait_for_timeout(100)
+    ok(pg.inner_text('.pr-n').startswith('2 /'), 'presentation: full screen, arrow moves to next slide')
+    pg.keyboard.press('Escape')
     b.close()
 print(f'\n{fail} FAILED' if fail else '\nall layout tests passed'); raise SystemExit(1 if fail else 0)

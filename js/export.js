@@ -1,5 +1,5 @@
 // Save the current song as PDF (exact picture of the preview pages) or Word (editable, on the logo template).
-import { transposeChords, stripNiqqud } from './parse.js?v=20261109-1647';
+import { transposeChords, stripNiqqud } from './parse.js?v=20261124-1808';
 
 const loaded = {};
 function loadScript(src) {
@@ -80,7 +80,9 @@ async function pdfBlob(pagesHtml, full) {
   try {
     const pages = [...host.querySelectorAll('.page')];
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+    const slide = pages[0]?.classList.contains('slide');
+    const [PW, PH] = slide ? [320, 180] : [210, 297];
+    const pdf = new jsPDF({ unit: 'mm', format: [PW, PH], orientation: slide ? 'landscape' : 'portrait', compress: true });
     for (let i = 0; i < pages.length; i++) {
       const p = pages[i];
       p.style.transform = 'none';
@@ -88,10 +90,10 @@ async function pdfBlob(pagesHtml, full) {
       const bgSrc = bgImg && full ? bgImg.getAttribute('src') : null;
       bgImg?.remove();
       p.style.background = 'transparent';
-      if (i) pdf.addPage();
-      if (bgSrc) pdf.addImage(await imageData(bgSrc), 'JPEG', 0, 0, 210, 297, 'bg:' + bgSrc, 'FAST');
+      if (i) pdf.addPage([PW, PH], slide ? 'landscape' : 'portrait');
+      if (bgSrc) pdf.addImage(await imageData(bgSrc), 'JPEG', 0, 0, PW, PH, 'bg:' + bgSrc, 'FAST');
       const layer = await renderLayer(p);
-      pdf.addImage(layer.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+      pdf.addImage(layer.toDataURL('image/png'), 'PNG', 0, 0, PW, PH, undefined, 'FAST');
     }
     return pdf.output('blob');
   } finally { host.remove(); }
